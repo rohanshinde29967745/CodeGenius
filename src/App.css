@@ -1,0 +1,1175 @@
+/* ================= HOME PAGE HERO SECTION ================= */
+
+.hero-section {
+  width: 100%;
+  height: 100vh;
+  margin-top: 80px;
+  background-image: url("https://wallpaperaccess.com/full/4238522.jpg");
+  background-size: cover;
+  background-position: center;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(5, 41, 85, 0.65);
+}
+
+.hero-content {
+  position: relative;
+  text-align: center;
+  color: white;
+  max-width: 900px;
+  z-index: 2;
+}
+
+.badge {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 8px 20px;
+  border-radius: 20px;
+  font-size: 14px;
+  margin-bottom: 20px;
+  display: inline-block;
+  backdrop-filter: blur(3px);
+}
+
+.hero-title {
+  font-size: 50px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.hero-subtitle {
+  margin-top: 15px;
+  font-size: 18px;
+  opacity: 0.9;
+}
+
+.hero-buttons {
+  margin-top: 30px;
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+}
+
+.btn-primary {
+  padding: 12px 28px;
+  background: #0066ff;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  color: white;
+  cursor: pointer;
+}
+
+.btn-primary:hover {
+  background: #0052cc;
+}
+
+.btn-secondary {
+  padding: 12px 28px;
+  background: transparent;
+  border: 2px solid white;
+  border-radius: 10px;
+  font-size: 16px;
+  color: white;
+  cursor: pointer;
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+/* ================= NAVBAR ================= */
+
+.navbar {
+  width: 100%;
+  padding: 20px 60px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+  position: fixed;
+  top: 0;
+  z-index: 20;
+  box-shadow: 0px 1px 5px rgba(0,0,0,0.1);
+}
+
+.logo {
+  font-size: 22px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.nav-links {
+  display: flex;
+  gap: 30px;
+  list-style: none;
+  cursor: pointer;
+}
+
+.get-started-btn {
+  padding: 10px 20px;
+  background: #0066ff;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.get-started-btn:hover {
+  background: #0052cc;
+}
+/* ====================== DASHBOARD PAGE ====================== */
+
+.dashboard-container {
+  margin-left: 250px;
+  margin-top: 90px;
+  padding: 20px 50px;
+}
+
+/* WELCOME TEXT */
+.welcome-text {
+  font-size: 32px;
+  font-weight: 700;
+}
+
+.sub-text {
+  margin-top: 5px;
+  font-size: 16px;
+  opacity: 0.8;
+}
+
+/* STATS CARDS */
+.stats-grid {
+  display: flex;
+  gap: 25px;
+  margin-top: 30px;
+}
+
+.stat-card {
+  width: 250px;
+  padding: 20px;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0px 0px 8px rgba(0,0,0,0.06);
+}
+
+.stat-card h4 {
+  font-size: 15px;
+  opacity: 0.7;
+}
+
+.stat-card h2 {
+  font-size: 32px;
+  margin: 10px 0 5px;
+}
+
+.level-bar {
+  width: 100%;
+  height: 6px;
+  background: #eee;
+  border-radius: 4px;
+  margin: 8px 0;
+}
+
+.progress {
+  width: 75%;
+  height: 100%;
+  background: gold;
+  border-radius: 4px;
+}
+
+/* QUICK ACTIONS & RECENT ACTIVITY */
+.middle-section {
+  display: flex;
+  margin-top: 40px;
+  gap: 30px;
+}
+
+.quick-actions,
+.recent-activity {
+  width: 50%;
+  background: #ffffff;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0px 0px 8px rgba(0,0,0,0.06);
+}
+
+.qa-card {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 15px;
+  border-radius: 12px;
+  margin-top: 15px;
+  background: #f8f8f8;
+  cursor: pointer;
+}
+
+.qa-card.blue span { color: #007bff; }
+.qa-card.green span { color: #28a745; }
+.qa-card.purple span { color: #6f42c1; }
+.qa-card.yellow span { color: #ffc107; }
+
+/* RECENT ACTIVITY LIST */
+.recent-activity ul {
+  margin-top: 15px;
+  list-style: none;
+}
+
+.recent-activity li {
+  margin-bottom: 15px;
+}
+
+.recent-activity li strong {
+  font-size: 15px;
+}
+
+.recent-activity li span {
+  display: block;
+  opacity: 0.7;
+}
+
+/* BADGES SECTION */
+.badges-section {
+  margin-top: 50px;
+}
+
+.badge-row {
+  display: flex;
+  gap: 20px;
+  margin-top: 15px;
+}
+
+.badge-item {
+  background: #f2f2f2;
+  padding: 8px 15px;
+  border-radius: 20px;
+  font-size: 14px;
+}
+
+/* CHALLENGE CARD */
+.challenge-card {
+  background: #eaf3ff;
+  padding: 20px;
+  border-radius: 12px;
+  margin-top: 40px;
+}
+
+.challenge-box {
+  margin-top: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.start-btn {
+  padding: 10px 20px;
+  background: #0066ff;
+  color: white;
+  border: none;
+  border-radius: 8px;
+}
+/* ===================== CODE ANALYZER PAGE ===================== */
+
+.analyzer-layout {
+  display: flex;
+  gap: 30px;
+  margin-top: 30px;
+}
+
+.code-input-section {
+  width: 50%;
+}
+
+.upload-buttons {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.upload-btn {
+  padding: 10px 15px;
+  background: #f2f2f2;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.upload-btn:hover {
+  background: #e0e0e0;
+}
+
+.code-area {
+  width: 100%;
+  height: 270px;
+  padding: 15px;
+  background: #fbfbfb;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  font-family: monospace;
+  font-size: 15px;
+}
+
+.analyze-btn {
+  margin-top: 15px;
+  padding: 12px 20px;
+  background: #0066ff;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.analyze-btn:hover {
+  background: #0052cc;
+}
+
+.analysis-results {
+  width: 50%;
+}
+
+.analysis-box {
+  background: #ffffff;
+  height: 310px;
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid #ddd;
+  overflow-y: auto;
+}
+
+.placeholder-text {
+  opacity: 0.6;
+  font-style: italic;
+}
+/* ===================== SIDEBAR ===================== */
+
+.sidebar {
+  width: 250px;
+  background: #f6f7f9;
+  height: 100vh;
+  position: fixed;
+  top: 80px;
+  left: 0;
+  padding: 20px 0;
+  border-right: 1px solid #e4e5e7;
+}
+
+.side-menu {
+  list-style: none;
+  padding: 0;
+}
+
+.side-item {
+  padding: 15px 25px;
+  font-size: 15px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #333;
+}
+
+.side-item:hover {
+  background: #eaeef5;
+}
+
+.active {
+  background: #d8e3ff;
+  font-weight: 600;
+  color: #0047d9;
+  border-right: 4px solid #0047d9;
+}
+/* ===================== CODE ANALYZER PAGE ===================== */
+
+.analyzer-layout {
+  display: flex;
+  gap: 30px;
+  margin-top: 30px;
+}
+
+.code-input-section {
+  width: 50%;
+}
+
+.upload-buttons {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.upload-btn {
+  padding: 10px 15px;
+  background: #f2f2f2;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.upload-btn:hover {
+  background: #e0e0e0;
+}
+
+.code-area {
+  width: 100%;
+  height: 270px;
+  padding: 15px;
+  background: #fbfbfb;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  font-family: monospace;
+  font-size: 15px;
+}
+
+.analyze-btn {
+  margin-top: 15px;
+  padding: 12px 20px;
+  background: #0066ff;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.analyze-btn:hover {
+  background: #0052cc;
+}
+
+.analysis-results {
+  width: 50%;
+}
+
+.analysis-box {
+  background: #ffffff;
+  height: 310px;
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid #ddd;
+  overflow-y: auto;
+}
+
+.placeholder-text {
+  opacity: 0.6;
+  font-style: italic;
+}
+
+/* ===================== CODE CONVERTER PAGE ===================== */
+
+.language-selector {
+  display: flex;
+  gap: 40px;
+  margin-top: 20px;
+}
+
+.lang-box label {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.lang-box select {
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin-left: 10px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+}
+
+.converter-layout {
+  display: flex;
+  gap: 30px;
+  margin-top: 30px;
+}
+
+.code-input-section,
+.analysis-results {
+  width: 50%;
+}
+
+.section-title {
+  font-size: 16px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.lang-tag {
+  padding: 3px 10px;
+  background: #eef3ff;
+  color: #0066ff;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.code-area {
+  width: 100%;
+  height: 260px;
+  padding: 15px;
+  background: #fbfbfb;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  font-family: monospace;
+  font-size: 15px;
+}
+
+.analysis-box {
+  height: 260px;
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.placeholder-text {
+  opacity: 0.6;
+  font-style: italic;
+}
+
+.convert-btn {
+  margin-top: 25px;
+  width: 200px;
+}
+/* ===================== PROBLEM SOLVING PAGE ===================== */
+
+.constraints-box {
+  background: #ffffff;
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid #e0e0e0;
+  width: 100%;
+  margin-top: 20px;
+}
+
+.constraints-box h3 {
+  margin-bottom: 10px;
+}
+
+.constraints-box ul {
+  margin-left: 20px;
+  line-height: 1.7;
+}
+
+.solution-box {
+  margin-top: 30px;
+  background: #ffffff;
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid #e0e0e0;
+}
+
+.solution-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.language-select {
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
+.solution-editor {
+  width: 100%;
+  height: 260px;
+  margin-top: 15px;
+  padding: 15px;
+  background: #f7f7f7;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  font-family: monospace;
+  font-size: 15px;
+}
+
+.solution-buttons {
+  margin-top: 15px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.run-tests-btn {
+  padding: 10px 20px;
+  background: white;
+  border: 1px solid #aaa;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.submit-btn {
+  padding: 10px 22px;
+  background: #1dbf43;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.submit-btn:hover {
+  background: #17a73a;
+}
+
+.output-box {
+  margin-top: 20px;
+  background: #eef7ff;
+  border-radius: 10px;
+  padding: 15px;
+  border-left: 4px solid #007bff;
+}
+
+/* ===================== TOP PERFORMERS ===================== */
+
+.top-performers-box {
+  background: #ffffff;
+  padding: 20px;
+  border-radius: 14px;
+  border: 1px solid #e6e6e6;
+  margin-top: 25px;
+}
+
+.top-row {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+}
+
+.top-card {
+  width: 30%;
+  background: #fafafa;
+  padding: 20px;
+  border-radius: 14px;
+  text-align: center;
+  border: 1px solid #e6e6e6;
+}
+
+.top-card img {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+}
+
+.top-winner {
+  background: #fcf9d9;
+  border: 1px solid #f4e48b;
+}
+
+.top-initial {
+  background: #eee;
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  margin: auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 22px;
+  font-weight: bold;
+}
+
+.winner-label {
+  background: gold;
+  padding: 5px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  color: #333;
+}
+
+/* ===================== GLOBAL LEADERBOARD TABLE ===================== */
+
+.gl-title {
+  margin-top: 30px;
+  font-size: 20px;
+}
+
+.filter-bar {
+  margin-top: 10px;
+  display: flex;
+  gap: 10px;
+}
+
+.filter-btn {
+  padding: 7px 15px;
+  border-radius: 20px;
+  background: #f0f0f0;
+  border: none;
+  cursor: pointer;
+}
+
+.filter-btn.active {
+  background: #cddcff;
+  color: #003aad;
+}
+
+.global-table {
+  margin-top: 20px;
+  max-height: 250px;
+  overflow-y: auto; /* SCROLL */
+  padding-right: 10px;
+}
+
+.gl-row {
+  display: grid;
+  grid-template-columns: 50px 1fr 100px 120px 80px;
+  padding: 12px;
+  border-bottom: 1px solid #eee;
+}
+
+.rank { font-weight: bold; }
+.user { font-weight: 500; }
+.badge { color: #6a4ff7; }
+.points { color: #444; }
+.accuracy { color: #2a7f2a; }
+/* ===================== LEADERBOARD PAGE ===================== */
+
+.lb-tabs {
+  display: flex;
+  gap: 20px;
+  margin-top: 25px;
+}
+
+.lb-tab {
+  padding: 10px 25px;
+  background: #f2f2f2;
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.lb-tab.active {
+  background: #dce7ff;
+  color: #0052cc;
+}
+
+.achievements-section {
+  margin-top: 30px;
+}
+
+.badge-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 25px;
+  margin-top: 20px;
+}
+
+.badge-card {
+  background: #ffffff;
+  padding: 25px;
+  border-radius: 14px;
+  border: 1px solid #e6e6e6;
+  text-align: center;
+  box-shadow: 0px 0px 5px rgba(0,0,0,0.05);
+}
+
+.badge-card h4 {
+  font-size: 18px;
+}
+
+.badge-card p {
+  margin-top: 5px;
+  opacity: 0.8;
+}
+
+.earned-tag {
+  margin-top: 12px;
+  display: inline-block;
+  padding: 5px 10px;
+  background: #e9f8e9;
+  color: #1a9c39;
+  border-radius: 15px;
+  font-size: 13px;
+}
+
+/* Progress bars */
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: #eee;
+  border-radius: 10px;
+  margin: 10px 0;
+}
+
+.progress-fill {
+  height: 100%;
+  background: #4d8bff;
+  border-radius: 10px;
+}
+
+/* Colors */
+.bronze { border-left: 4px solid #c97c47; }
+.silver { border-left: 4px solid #a6a6a6; }
+.gold { border-left: 4px solid #e0b72a; }
+.platinum { border-left: 4px solid #9f89ff; }
+
+.solver { border-left: 4px solid #38b000; }
+.optimizer { border-left: 4px solid #7e57c2; }
+.demon { border-left: 4px solid #ff5252; }
+.streak { border-left: 4px solid #ff4081; }
+
+/* ===================== UPLOAD PROJECT PAGE ===================== */
+
+.project-layout {
+  display: flex;
+  margin-top: 25px;
+  gap: 30px;
+}
+
+/* ----- LEFT SIDE (UPLOAD FORM) ----- */
+.upload-box {
+  width: 35%;
+  background: #fff;
+  padding: 20px;
+  border-radius: 14px;
+  border: 1px solid #e4e4e4;
+}
+
+.upload-box label {
+  font-weight: 600;
+  margin-top: 10px;
+  display: block;
+}
+
+.input-field,
+.textarea-field,
+.filter-select {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  margin-top: 5px;
+  font-size: 14px;
+}
+
+.textarea-field {
+  height: 100px;
+  resize: none;
+}
+
+.file-input {
+  margin-top: 10px;
+}
+
+.submit-project-btn {
+  margin-top: 15px;
+  padding: 12px 20px;
+  border: none;
+  background: #0066ff;
+  color: white;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.submit-project-btn:hover {
+  background: #0052cc;
+}
+
+/* ----- RIGHT SIDE (PROJECT GALLERY) ----- */
+.browse-box {
+  width: 65%;
+}
+
+.filter-row {
+  display: flex;
+  gap: 15px;
+  margin-top: 10px;
+}
+
+.project-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.project-card {
+  background: #fff;
+  padding: 20px;
+  border-radius: 14px;
+  border: 1px solid #e4e4e4;
+}
+
+.author {
+  opacity: 0.8;
+  margin-bottom: 5px;
+}
+
+.desc {
+  opacity: 0.8;
+}
+
+.tag-row {
+  margin-top: 10px;
+  display: flex;
+  gap: 10px;
+}
+
+.tag {
+  background: #eef3ff;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  color: #0066ff;
+}
+
+.stats-row {
+  display: flex;
+  gap: 20px;
+  margin-top: 10px;
+  opacity: 0.7;
+}
+
+/* ===================== PROFILE SETTINGS PAGE ===================== */
+
+.profile-tabs {
+  display: flex;
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.p-tab {
+  padding: 10px 25px;
+  background: #f2f2f2;
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+}
+
+.p-tab.active {
+  background: #dce7ff;
+  color: #0047d9;
+  font-weight: 600;
+}
+
+.profile-layout {
+  display: flex;
+  margin-top: 30px;
+  gap: 40px;
+}
+
+/* LEFT SIDE */
+.profile-left {
+  width: 30%;
+}
+
+.profile-pic-box {
+  background: #fff;
+  padding: 20px;
+  border-radius: 14px;
+  border: 1px solid #e4e4e4;
+  text-align: center;
+}
+
+.profile-pic {
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  margin-bottom: 10px;
+}
+
+.email-text {
+  opacity: 0.7;
+}
+
+.level-badge {
+  background: gold;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-block;
+  margin-top: 8px;
+}
+
+.stats-box {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 20px;
+}
+
+.stats-box div {
+  text-align: center;
+}
+
+.progress-title {
+  margin-top: 20px;
+  font-weight: 600;
+}
+
+.progress-bar {
+  height: 8px;
+  background: #eee;
+  border-radius: 10px;
+  margin-top: 5px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: #0066ff;
+  border-radius: 10px;
+}
+
+/* RIGHT SIDE */
+.profile-right {
+  width: 70%;
+}
+
+.info-card {
+  background: #fff;
+  padding: 20px;
+  border-radius: 14px;
+  border: 1px solid #e4e4e4;
+}
+
+.info-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.edit-btn {
+  background: none;
+  border: 1px solid #aaa;
+  padding: 5px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.info-grid {
+  margin-top: 20px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 25px;
+}
+
+.info-item label {
+  font-weight: 600;
+}
+
+.info-item p {
+  margin-top: 4px;
+  opacity: 0.8;
+}
+
+.info-item.full {
+  grid-column: 1 / 3;
+}
+/* ===================== ADMIN DASHBOARD PAGE ===================== */
+
+.admin-top-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 15px;
+}
+
+.admin-btn {
+  padding: 10px 18px;
+  border: 1px solid #bbb;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.admin-btn:hover {
+  background: #f2f2f2;
+}
+
+.admin-stats-row {
+  display: flex;
+  gap: 25px;
+  margin-top: 25px;
+}
+
+.admin-stat-card {
+  flex: 1;
+  background: #fff;
+  padding: 20px;
+  border-radius: 14px;
+  border: 1px solid #e4e4e4;
+}
+
+.admin-stat-card h3 {
+  opacity: 0.7;
+}
+
+.admin-stat-card h1 {
+  margin: 10px 0;
+}
+
+.green {
+  color: green;
+  font-size: 14px;
+}
+
+/* TWO COLUMNS */
+.admin-two-col {
+  display: flex;
+  gap: 30px;
+  margin-top: 30px;
+}
+
+.admin-left,
+.admin-right {
+  flex: 1;
+}
+
+.activity-item {
+  background: #fff;
+  padding: 12px;
+  margin-top: 10px;
+  border-radius: 12px;
+  border: 1px solid #e3e3e3;
+}
+
+.icon {
+  font-size: 20px;
+  margin-right: 8px;
+}
+
+.blue { color: #007bff; }
+.green { color: #28a745; }
+.purple { color: #6f42c1; }
+.orange { color: #fd7e14; }
+
+.time {
+  float: right;
+  opacity: 0.6;
+}
+
+/* POPULAR PROBLEMS */
+.pop-problem {
+  background: #fff;
+  padding: 15px;
+  border-radius: 14px;
+  border: 1px solid #e3e3e3;
+  margin-bottom: 20px;
+}
+
+.pop-header {
+  display: flex;
+  justify-content: space-between;
+}
+
+.pop-bar {
+  height: 8px;
+  background: #e9e9e9;
+  margin-top: 8px;
+  border-radius: 10px;
+}
+
+.pop-fill {
+  height: 100%;
+  background: #007bff;
+  border-radius: 10px;
+  transition: width 0.4s;
+}
