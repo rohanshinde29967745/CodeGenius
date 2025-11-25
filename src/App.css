@@ -541,6 +541,50 @@
   margin-top: 25px;
   width: 200px;
 }
+/* ===================== ANALYZER TABS (NEW UI) ===================== */
+
+.tab-bar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 8px;
+}
+
+.tab-btn {
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  background: #f9fafb;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 14px;
+  transition: 0.2s;
+}
+
+.tab-btn:hover {
+  background: #f3f4f6;
+}
+
+.tab-btn.active {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+}
+
+.tab-output {
+  background: #f7f7f8;
+  border: 1px solid #e5e7eb;
+  padding: 16px;
+  border-radius: 10px;
+  min-height: 240px;
+  white-space: pre-wrap;
+  font-family: "Courier New", monospace;
+  font-size: 14px;
+  color: #111;
+  overflow-y: auto;
+}
+
 /* ===================== PROBLEM SOLVING PAGE ===================== */
 
 .constraints-box {
