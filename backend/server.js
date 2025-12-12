@@ -2,9 +2,13 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 
-// import both routes
+// Existing routes
 import analyzeRoute from "./routes/analyze.js";
 import convertRoute from "./routes/convert.js";
+
+// NEW routes (Problem Generate + Problem Check)
+import problemGenerateRoute from "./routes/problemGenerate.js";
+import problemCheckRoute from "./routes/problemCheck.js";
 
 dotenv.config();
 
@@ -22,6 +26,12 @@ app.use("/api/analyze", analyzeRoute);
 // Code Converter (language conversion)
 app.use("/api/convert", convertRoute);
 
+// NEW — AI Problem Generator
+app.use("/api/problem-generate", problemGenerateRoute);
+
+// NEW — AI Problem Checker
+app.use("/api/problem-check", problemCheckRoute);
+
 // --------------------
 // SERVER START
 // --------------------
@@ -32,4 +42,6 @@ app.listen(PORT, () => {
   console.log("✅ Routes active:");
   console.log("→ /api/analyze (Code Analyzer)");
   console.log("→ /api/convert (Code Converter)");
+  console.log("→ /api/problem-generate (Problem Generator)");
+  console.log("→ /api/problem-check (Solution Checker)");
 });

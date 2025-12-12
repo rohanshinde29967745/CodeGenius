@@ -1,5 +1,5 @@
 import React, { useRef, useState } from "react";
-import "../login.css";
+import "./login.css";
 
 function Login({ setIsLoggedIn, setPage }) {
   const containerRef = useRef(null);

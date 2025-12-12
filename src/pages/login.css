@@ -1,0 +1,147 @@
+/* Wrap ALL login styles inside .login-wrapper so they don’t affect rest of the website */
+.login-wrapper * {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Poppins", sans-serif;
+}
+
+/* Background */
+.login-wrapper {
+  background: linear-gradient(135deg, #6e8efb, #a777e3);
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+/* Main Container */
+.login-wrapper .login-container {
+  width: 850px;
+  height: 500px;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 0 25px rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+  display: flex;
+  position: relative;
+  overflow: hidden;
+  transition: 0.5s ease-in-out;
+}
+
+/* Form Box Base */
+.login-wrapper .form-box {
+  width: 50%;
+  height: 100%;
+  padding: 50px;
+  position: absolute;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  transition: 0.6s ease;
+}
+
+/* Login Left */
+.login-wrapper .login-box {
+  left: 0;
+}
+
+/* Register Right */
+.login-wrapper .register-box {
+  right: -50%;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.login-wrapper .login-container.active .login-box {
+  left: -50%;
+  opacity: 0;
+}
+
+.login-wrapper .login-container.active .register-box {
+  right: 0;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Headings */
+.login-wrapper h2 {
+  text-align: center;
+  color: #fff;
+  margin-bottom: 25px;
+}
+
+/* Inputs */
+.login-wrapper .input-field {
+  margin: 15px 0;
+}
+
+.login-wrapper .input-field input {
+  width: 100%;
+  padding: 14px;
+  border-radius: 10px;
+  border: none;
+  outline: none;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  box-shadow: 0 0 5px rgba(255, 255, 255, 0.4);
+  transition: 0.3s;
+}
+
+.login-wrapper .input-field input:focus {
+  background: rgba(255, 255, 255, 0.35);
+  box-shadow: 0 0 10px white;
+}
+
+/* Buttons */
+.login-wrapper .btn {
+  width: 100%;
+  padding: 12px;
+  background: #4d6dfb;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  margin-top: 15px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: 0.3s;
+}
+
+.login-wrapper .btn:hover {
+  background: #3654e0;
+  box-shadow: 0 0 15px rgba(77,109,251,0.8);
+}
+
+/* Switch Text */
+.login-wrapper .switch-text {
+  text-align: center;
+  color: #fff;
+  margin-top: 15px;
+}
+
+.login-wrapper .switch-text span {
+  color: #ffe66d;
+  cursor: pointer;
+}
+
+/* Mobile Responsive */
+@media (max-width: 700px) {
+  .login-wrapper .login-container {
+    height: auto;
+    flex-direction: column;
+    padding: 20px;
+  }
+
+  .login-wrapper .form-box {
+    position: relative;
+    width: 100%;
+    padding: 30px;
+  }
+
+  .login-wrapper .login-container.active .login-box {
+    display: none;
+  }
+}

@@ -277,6 +277,10 @@
   border: none;
   border-radius: 8px;
 }
+
+
+
+
 /* ===================== CODE ANALYZER PAGE ===================== */
 
 .analyzer-layout {
@@ -353,42 +357,148 @@
 }
 /* ===================== SIDEBAR ===================== */
 
-.sidebar {
-  width: 250px;
-  background: #f6f7f9;
+/* ------------------------------------------------------ */
+/*        ULTRA PREMIUM GLASS ANIMATED SIDEBAR UI        */
+/* ------------------------------------------------------ */
+
+.sidebar-ultra {
+  width: 260px;
   height: 100vh;
   position: fixed;
-  top: 80px;
+  top: 0;
   left: 0;
-  padding: 20px 0;
-  border-right: 1px solid #e4e5e7;
+  padding-top: 85px;
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: blur(18px);
+  border-right: 1px solid rgba(180,180,180,0.3);
+  box-shadow: 8px 0 30px rgba(0,0,0,0.08);
+  animation: slideIn 0.4s ease;
+  z-index: 20;
 }
 
-.side-menu {
-  list-style: none;
-  padding: 0;
-}
-
-.side-item {
-  padding: 15px 25px;
-  font-size: 15px;
-  cursor: pointer;
+/* Brand Section */
+.sidebar-brand {
   display: flex;
   align-items: center;
-  gap: 10px;
-  color: #333;
+  gap: 12px;
+  padding: 16px 22px;
+  position: absolute;
+  top: 18px;
 }
 
-.side-item:hover {
-  background: #eaeef5;
+.brand-logo {
+  font-size: 26px;
+  filter: drop-shadow(0px 0px 8px rgba(255,200,0,0.8));
 }
 
-.active {
-  background: #d8e3ff;
+.brand-text {
+  font-size: 22px;
+  font-weight: 700;
+  color: #1e3a8a;
+}
+
+.brand-glow {
+  position: absolute;
+  width: 70px;
+  height: 70px;
+  background: radial-gradient(circle, rgba(255,220,130,0.45), transparent 70%);
+  top: -10px;
+  left: -10px;
+  z-index: -1;
+}
+
+/* Menu List */
+.sidebar-ultra-menu {
+  list-style: none;
+  padding: 0;
+  margin-top: 10px;
+}
+
+/* Each item */
+.ultra-item {
+  position: relative;
+  margin: 6px 14px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: 0.25s ease-out;
+  color: #334155;
+  font-size: 15px;
+}
+
+/* Hover animations */
+.ultra-item:hover {
+  background: rgba(99,102,241,0.08);
+  transform: translateX(6px);
+  box-shadow: 0 4px 16px rgba(99,102,241,0.15);
+}
+
+/* Icon rounded box */
+.ultra-icon {
+  font-size: 18px;
+  padding: 8px;
+  width: 40px;
+  height: 40px;
+  background: white;
+  border-radius: 12px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  transition: 0.25s;
+}
+
+.ultra-item:hover .ultra-icon {
+  transform: scale(1.08);
+}
+
+/* Active State */
+.active-ultra {
+  background: linear-gradient(90deg, #e0e7ff, #eef2ff);
+  color: #1e40af;
+  transform: translateX(8px);
+  box-shadow: 0 4px 22px rgba(59,130,246,0.25);
   font-weight: 600;
-  color: #0047d9;
-  border-right: 4px solid #0047d9;
 }
+
+/* Blue Indicator Bar */
+.active-indicator {
+  position: absolute;
+  right: -12px;
+  top: 12px;
+  width: 6px;
+  height: 34px;
+  background: #2563eb;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(37,99,235,0.6);
+  animation: grow 0.25s ease-out;
+}
+
+/* Menu Label */
+.ultra-label {
+  letter-spacing: 0.3px;
+}
+
+/* Animation */
+@keyframes slideIn {
+  from { transform: translateX(-50px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes grow {
+  from { height: 0; opacity: 0; }
+  to { height: 34px; opacity: 1; }
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .sidebar-ultra { width: 210px; }
+}
+
+
 /* ===================== CODE ANALYZER PAGE ===================== */
 
 .analyzer-layout {
@@ -587,90 +697,133 @@
 
 /* ===================== PROBLEM SOLVING PAGE ===================== */
 
-.constraints-box {
-  background: #ffffff;
-  padding: 20px;
-  border-radius: 12px;
-  border: 1px solid #e0e0e0;
-  width: 100%;
+/* ========= PROBLEM SOLVING (LIGHT THEME) ========= */
+
+.ps-topbar {
+  display: flex;
+  gap: 15px;
   margin-top: 20px;
 }
 
-.constraints-box h3 {
-  margin-bottom: 10px;
+.ps-difficulty {
+  padding: 10px 15px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  background: white;
+  font-size: 15px;
 }
 
-.constraints-box ul {
-  margin-left: 20px;
-  line-height: 1.7;
+.ps-generate-btn {
+  padding: 10px 20px;
+  background: #0066ff;
+  border: none;
+  color: white;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 15px;
 }
 
-.solution-box {
-  margin-top: 30px;
-  background: #ffffff;
+.ps-layout {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 25px;
+  margin-top: 25px;
+}
+
+.card {
+  background: white;
   padding: 20px;
   border-radius: 12px;
-  border: 1px solid #e0e0e0;
+  border: 1px solid #e6e6e6;
 }
 
-.solution-header {
+.ps-problem-title {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.ps-badge {
+  padding: 4px 12px;
+  border-radius: 20px;
+  margin-left: 8px;
+  font-size: 13px;
+}
+
+.ps-badge.easy { background: #e8f9e5; color: #1f8a2b; }
+.ps-badge.medium { background: #fff4d6; color: #b58b00; }
+.ps-badge.hard { background: #ffe1e1; color: #d32f2f; }
+
+.ps-section {
+  margin-top: 20px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.ps-text {
+  margin-top: 5px;
+  color: #333;
+}
+
+.ps-example-block {
+  margin-top: 10px;
+  background: #f4f6ff;
+  padding: 12px;
+  border-radius: 10px;
+  font-size: 14px;
+}
+
+.ps-empty {
+  color: #888;
+}
+
+.ps-constraints li {
+  margin-top: 6px;
+  color: #444;
+}
+
+.ps-solution-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-.language-select {
-  padding: 8px 12px;
-  border-radius: 6px;
+.ps-lang-select {
+  padding: 8px 10px;
+  border-radius: 8px;
   border: 1px solid #ccc;
+  background: white;
 }
 
-.solution-editor {
+.ps-editor {
   width: 100%;
-  height: 260px;
-  margin-top: 15px;
-  padding: 15px;
-  background: #f7f7f7;
+  height: 280px;
   border-radius: 10px;
   border: 1px solid #ddd;
+  background: #fafafa;
   font-family: monospace;
+  padding: 12px;
+  margin-top: 10px;
+}
+
+.ps-submit-btn {
+  margin-top: 15px;
+  padding: 12px 18px;
+  background: #28a745;
+  border: none;
+  color: white;
+  border-radius: 8px;
+  cursor: pointer;
   font-size: 15px;
 }
 
-.solution-buttons {
+.ps-result-box {
   margin-top: 15px;
-  display: flex;
-  justify-content: space-between;
-}
-
-.run-tests-btn {
-  padding: 10px 20px;
-  background: white;
-  border: 1px solid #aaa;
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-.submit-btn {
-  padding: 10px 22px;
-  background: #1dbf43;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-.submit-btn:hover {
-  background: #17a73a;
-}
-
-.output-box {
-  margin-top: 20px;
-  background: #eef7ff;
-  border-radius: 10px;
+  background: #f7f7f7;
+  border: 1px solid #eee;
   padding: 15px;
-  border-left: 4px solid #007bff;
+  border-radius: 10px;
 }
+
 
 /* ===================== TOP PERFORMERS ===================== */
 

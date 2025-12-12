@@ -1,67 +1,41 @@
+// Sidebar.jsx – Ultra Premium Version
 import React from "react";
 import "../App.css";
 
 function Sidebar({ setPage, activePage }) {
+  const menu = [
+    { key: "dashboard", icon: "📊", label: "Dashboard" },
+    { key: "analyzer", icon: "🧠", label: "Code Analyzer" },
+    { key: "converter", icon: "🔄", label: "Code Converter" },
+    { key: "problemSolving", icon: "📝", label: "Problem Solving" },
+    { key: "leaderboard", icon: "🏅", label: "Leaderboard" },
+    { key: "upload", icon: "📤", label: "Upload Project" },
+    { key: "profile", icon: "👤", label: "Profile Settings" },
+    { key: "admin", icon: "🛠", label: "Admin Dashboard" }
+  ];
+
   return (
-    <aside className="sidebar">
+    <aside className="sidebar-ultra">
+      <div className="sidebar-brand">
+        <div className="brand-glow"></div>
+        <span className="brand-logo">⚡</span>
+        <h2 className="brand-text">CodeGenius</h2>
+      </div>
 
-      <ul className="side-menu">
+      <ul className="sidebar-ultra-menu">
+        {menu.map((item) => (
+          <li
+            key={item.key}
+            className={`ultra-item ${activePage === item.key ? "active-ultra" : ""}`}
+            onClick={() => setPage(item.key)}
+          >
+            <div className="ultra-icon">{item.icon}</div>
+            <span className="ultra-label">{item.label}</span>
 
-        <li
-          className={activePage === "dashboard" ? "side-item active" : "side-item"}
-          onClick={() => setPage("dashboard")}
-        >
-          📊 Dashboard
-        </li>
-
-        <li
-          className={activePage === "analyzer" ? "side-item active" : "side-item"}
-          onClick={() => setPage("analyzer")}
-        >
-          🧠 Code Analyzer
-        </li>
-
-        <li
-          className={activePage === "converter" ? "side-item active" : "side-item"}
-          onClick={() => setPage("converter")}
-        >
-          🔄 Code Converter
-        </li>
-        <li
-           className={activePage === "problemSolving" ? "side-item active" : "side-item"}
-            onClick={() => setPage("problemSolving")}
->
-          📝 Problem Solving
-        </li>
-        <li
-          className={activePage === "leaderboard" ? "side-item active" : "side-item"}
-          onClick={() => setPage("leaderboard")}
->
-          🏅 Leaderboard
-        </li>
-        <li
-          className={activePage === "upload" ? "side-item active" : "side-item"}
-          onClick={() => setPage("upload")}
-        >
-         📤 Upload Project
-        </li>
-        <li
-          className={activePage === "profile" ? "side-item active" : "side-item"}
-          onClick={() => setPage("profile")}
->
-         👤 Profile Settings
-        </li>
-
-        <li
-          className={activePage === "admin" ? "side-item active" : "side-item"}
-          onClick={() => setPage("admin")}
->
-          🛠 Admin Dashboard
-        </li>
-
-
+            {activePage === item.key && <div className="active-indicator"></div>}
+          </li>
+        ))}
       </ul>
-
     </aside>
   );
 }
