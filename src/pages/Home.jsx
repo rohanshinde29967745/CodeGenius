@@ -1,18 +1,28 @@
-import React from "react";
+import React, { useState } from "react";
 import "../App.css";
 
 function Home({ setPage }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+
   return (
     <>
       {/* NAVBAR */}
       <nav className="navbar">
-        <div className="logo">CodeGenius.AI</div>
+        <img src={require('../assets/logo.png')} alt="CodeGenius" className="nav-logo" />
 
-        <ul className="nav-links">
-          <li onClick={() => setPage("home")}>Home</li>
-          <li>Features</li>
-          <li onClick={() => setPage("leaderboard")}>Leaderboard</li>
-          <li onClick={() => setPage("login")}>Login</li>
+        <button
+          className="mobile-menu-btn"
+          onClick={() => setMenuOpen(!menuOpen)}
+          aria-label="Toggle menu"
+        >
+          {menuOpen ? "✕" : "☰"}
+        </button>
+
+        <ul className={`nav-links ${menuOpen ? "show" : ""}`}>
+          <li onClick={() => { setPage("login"); setMenuOpen(false); }}>Home</li>
+          <li onClick={() => { setPage("login"); setMenuOpen(false); }}>Features</li>
+          <li onClick={() => { setPage("login"); setMenuOpen(false); }}>Leaderboard</li>
+          <li onClick={() => { setPage("login"); setMenuOpen(false); }}>Login</li>
         </ul>
 
         <button className="get-started-btn" onClick={() => setPage("login")}>
@@ -40,7 +50,7 @@ function Home({ setPage }) {
             <button className="btn-primary" onClick={() => setPage("login")}>
               Try Now
             </button>
-            
+
             <button className="btn-secondary">
               Learn More
             </button>

@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import "../App.css";
 
 function UploadProject() {
+  const [showUpload, setShowUpload] = useState(false);
+
   const [projectTitle, setProjectTitle] = useState("");
   const [description, setDescription] = useState("");
   const [language, setLanguage] = useState("");
@@ -42,104 +44,50 @@ function UploadProject() {
         other developers.
       </p>
 
+      {/* TOP ACTION BAR */}
+      <div className="upload-action-bar">
+        <h3>🔍 Browse Projects</h3>
+        <button
+          className="submit-project-btn"
+          onClick={() => setShowUpload(!showUpload)}
+        >
+          ➕ Upload Project
+        </button>
+      </div>
+
       <div className="project-layout">
-        {/* LEFT SIDE - UPLOAD CARD */}
-        <div className="upload-box">
-          <h3>📤 Upload Project</h3>
-          <p>Share your project with the community</p>
 
-          <label>Project Title</label>
-          <input
-            className="input-field"
-            placeholder="Enter project title"
-            value={projectTitle}
-            onChange={(e) => setProjectTitle(e.target.value)}
-          />
-
-          <label>Description</label>
-          <textarea
-            className="textarea-field"
-            placeholder="Describe your project..."
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          ></textarea>
-
-          <label>Programming Language</label>
-          <select
-            className="input-field"
-            value={language}
-            onChange={(e) => setLanguage(e.target.value)}
-          >
-            <option>Select language</option>
-            <option>JavaScript</option>
-            <option>Python</option>
-            <option>Java</option>
-            <option>C++</option>
-          </select>
-
-          <label>Category</label>
-          <select
-            className="input-field"
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-          >
-            <option>Select category</option>
-            <option>Web Development</option>
-            <option>Data Science</option>
-            <option>Mobile Apps</option>
-            <option>Machine Learning</option>
-          </select>
-
-          <label>Tags</label>
-          <input
-            className="input-field"
-            placeholder="React, TypeScript, API..."
-            value={tags}
-            onChange={(e) => setTags(e.target.value)}
-          />
-
-          <label>GitHub Repository</label>
-          <input
-            className="input-field"
-            placeholder="https://github.com/..."
-            value={github}
-            onChange={(e) => setGithub(e.target.value)}
-          />
-
-          <label>Upload Files</label>
-          <input type="file" className="file-input" />
-
-          <button className="submit-project-btn" onClick={handleSubmit}>
-            Submit Project
-          </button>
-        </div>
-
-        {/* RIGHT SIDE - PROJECT GALLERY */}
+        {/* LEFT SIDE – BROWSE PROJECTS */}
         <div className="browse-box">
-          <h3>🔍 Browse Projects</h3>
-
-          {/* FILTERS */}
           <div className="filter-row">
-            <select className="filter-select">
-              <option>All Languages</option>
-              <option>JavaScript</option>
-              <option>Python</option>
-              <option>C++</option>
-            </select>
+            <div className="dropdown-with-label">
+              <label className="dropdown-label">Language</label>
+              <select className="filter-select">
+                <option>All Languages</option>
+                <option>JavaScript</option>
+                <option>Python</option>
+                <option>C++</option>
+              </select>
+            </div>
 
-            <select className="filter-select">
-              <option>All Categories</option>
-              <option>Web Development</option>
-              <option>Data Science</option>
-            </select>
+            <div className="dropdown-with-label">
+              <label className="dropdown-label">Category</label>
+              <select className="filter-select">
+                <option>All Categories</option>
+                <option>Web Development</option>
+                <option>Data Science</option>
+              </select>
+            </div>
 
-            <select className="filter-select">
-              <option>Most Recent</option>
-              <option>Most Popular</option>
-            </select>
+            <div className="dropdown-with-label">
+              <label className="dropdown-label">Sort By</label>
+              <select className="filter-select">
+                <option>Most Recent</option>
+                <option>Most Popular</option>
+              </select>
+            </div>
           </div>
 
-          {/* PROJECT CARDS */}
           <div className="project-list">
             {projects.map((proj, i) => (
               <div key={i} className="project-card">
@@ -164,6 +112,79 @@ function UploadProject() {
             ))}
           </div>
         </div>
+
+        {/* RIGHT SIDE – UPLOAD PROJECT (DROPDOWN) */}
+        {showUpload && (
+          <div className="upload-box">
+            <h3>📤 Upload Project</h3>
+            <p>Share your project with the community</p>
+
+            <label>Project Title</label>
+            <input
+              className="input-field"
+              placeholder="Enter project title"
+              value={projectTitle}
+              onChange={(e) => setProjectTitle(e.target.value)}
+            />
+
+            <label>Description</label>
+            <textarea
+              className="textarea-field"
+              placeholder="Describe your project..."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+
+            <label>Programming Language</label>
+            <select
+              className="input-field"
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+            >
+              <option>Select language</option>
+              <option>JavaScript</option>
+              <option>Python</option>
+              <option>Java</option>
+              <option>C++</option>
+            </select>
+
+            <label>Category</label>
+            <select
+              className="input-field"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+            >
+              <option>Select category</option>
+              <option>Web Development</option>
+              <option>Data Science</option>
+              <option>Mobile Apps</option>
+              <option>Machine Learning</option>
+            </select>
+
+            <label>Tags</label>
+            <input
+              className="input-field"
+              placeholder="React, TypeScript, API..."
+              value={tags}
+              onChange={(e) => setTags(e.target.value)}
+            />
+
+            <label>GitHub Repository</label>
+            <input
+              className="input-field"
+              placeholder="https://github.com/..."
+              value={github}
+              onChange={(e) => setGithub(e.target.value)}
+            />
+
+            <label>Upload Files</label>
+            <input type="file" className="file-input" />
+
+            <button className="submit-project-btn" onClick={handleSubmit}>
+              🚀 Publish Project
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -4,16 +4,39 @@ import "../App.css";
 function AdminDashboard() {
   return (
     <div className="dashboard-container">
+
+      {/* ================= TOP ADMIN BAR (LIKE IMAGE) ================= */}
+      <div className="admin-topbar">
+
+        {/* SEARCH */}
+        <div className="admin-search">
+          <input type="text" placeholder="Search..." />
+        </div>
+
+        {/* RIGHT SIDE */}
+        <div className="admin-topbar-right">
+          <button className="admin-notification">🔔</button>
+
+          <div className="admin-profile">
+            <div className="admin-avatar">👤</div>
+            <div className="admin-info">
+              <strong>Alex Chen</strong>
+              <span>Gold Level</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+      {/* ================= END TOP BAR ================= */}
+
       <h1 className="welcome-text">Admin Dashboard</h1>
       <p className="sub-text">Platform analytics and management overview.</p>
 
-      {/* TOP RIGHT BUTTONS */}
       <div className="admin-top-buttons">
         <button className="admin-btn">📤 Export Data</button>
         <button className="admin-btn">⚙ Settings</button>
       </div>
 
-      {/* TOP ANALYTICS CARDS */}
       <div className="admin-stats-row">
         <div className="admin-stat-card">
           <h3>Total Users</h3>
@@ -40,40 +63,47 @@ function AdminDashboard() {
         </div>
       </div>
 
-      {/* TWO COLUMN LAYOUT */}
       <div className="admin-two-col">
 
-        {/* LEFT – RECENT ACTIVITY */}
+        {/* RECENT ACTIVITY */}
         <div className="admin-left">
           <h3 className="section-title">🔵 Recent Activity</h3>
           <p className="section-sub">Latest platform events and user actions</p>
 
           <div className="activity-item">
-            <span className="icon blue">📧</span>
-            New user registration: sarah.dev@email.com
+            <div className="activity-left">
+              <span className="icon blue">📧</span>
+              <span>New user registration: sarah.dev@email.com</span>
+            </div>
             <span className="time">2 minutes ago</span>
           </div>
 
           <div className="activity-item">
-            <span className="icon green">🧩</span>
-            Problem "Binary Tree Traversal" was solved 15 times
+            <div className="activity-left">
+              <span className="icon green">🧩</span>
+              <span>Problem "Binary Tree Traversal" was solved 15 times</span>
+            </div>
             <span className="time">5 minutes ago</span>
           </div>
 
           <div className="activity-item">
-            <span className="icon purple">📦</span>
-            Project uploaded: "React Todo App"
+            <div className="activity-left">
+              <span className="icon purple">📦</span>
+              <span>Project uploaded: "React Todo App"</span>
+            </div>
             <span className="time">12 minutes ago</span>
           </div>
 
           <div className="activity-item">
-            <span className="icon orange">🏅</span>
-            3 users earned "Problem Solver" badge
+            <div className="activity-left">
+              <span className="icon orange">🏅</span>
+              <span>3 users earned "Problem Solver" badge</span>
+            </div>
             <span className="time">1 hour ago</span>
           </div>
         </div>
 
-        {/* RIGHT – MOST POPULAR PROBLEMS */}
+        {/* POPULAR PROBLEMS */}
         <div className="admin-right">
           <h3 className="section-title">🔥 Most Popular Problems</h3>
           <p className="section-sub">Problems with highest engagement</p>
@@ -84,7 +114,7 @@ function AdminDashboard() {
               <span>1547 attempts</span>
             </div>
             <div className="pop-bar">
-              <div className="pop-fill" style={{ width: "76%" }}></div>
+              <div className="pop-fill" style={{ width: "76%" }} />
             </div>
             <small>Success Rate: 76%</small>
           </div>
@@ -95,7 +125,7 @@ function AdminDashboard() {
               <span>1234 attempts</span>
             </div>
             <div className="pop-bar">
-              <div className="pop-fill" style={{ width: "85%" }}></div>
+              <div className="pop-fill" style={{ width: "85%" }} />
             </div>
             <small>Success Rate: 85%</small>
           </div>
@@ -106,7 +136,7 @@ function AdminDashboard() {
               <span>987 attempts</span>
             </div>
             <div className="pop-bar">
-              <div className="pop-fill" style={{ width: "92%" }}></div>
+              <div className="pop-fill" style={{ width: "92%" }} />
             </div>
             <small>Success Rate: 92%</small>
           </div>
