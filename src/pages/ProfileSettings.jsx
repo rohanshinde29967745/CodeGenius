@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import "../App.css";
 
 function ProfileSettings({ isDark, toggleTheme, setIsLoggedIn, setPage }) {
@@ -6,6 +6,10 @@ function ProfileSettings({ isDark, toggleTheme, setIsLoggedIn, setPage }) {
   const [expandedCategory, setExpandedCategory] = useState(null);
   const [selectedProject, setSelectedProject] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [profilePhoto, setProfilePhoto] = useState("https://randomuser.me/api/portraits/men/32.jpg");
+
+  // Ref for file input
+  const fileInputRef = useRef(null);
 
   // Personal Info State
   const [profileData, setProfileData] = useState({
@@ -25,6 +29,18 @@ function ProfileSettings({ isDark, toggleTheme, setIsLoggedIn, setPage }) {
   const handleSaveProfile = () => {
     setIsEditing(false);
     // In real app, save to backend
+  };
+
+  // Handle profile photo change
+  const handlePhotoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProfilePhoto(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   // Project data organized by category
@@ -75,7 +91,7 @@ function ProfileSettings({ isDark, toggleTheme, setIsLoggedIn, setPage }) {
   };
 
   return (
-    <div className="dashboard-container">
+    <div className="dashboard-container profile-settings-page">
       <h1 className="welcome-text">Profile Settings</h1>
       <p className="sub-text">
         Manage your account information and track your coding progress.
@@ -94,19 +110,37 @@ function ProfileSettings({ isDark, toggleTheme, setIsLoggedIn, setPage }) {
         ))}
       </div>
 
+      {/* Hidden file input for photo upload */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        style={{ display: 'none' }}
+        accept="image/*"
+        onChange={handlePhotoChange}
+      />
+
       {/* ================= PROFILE TAB ================= */}
       {activeTab === "profile" && (
         <div className="profile-layout">
           {/* LEFT */}
           <div className="profile-left">
             <div className="profile-pic-box">
-              <img
-                src="https://randomuser.me/api/portraits/men/32.jpg"
-                alt="profile"
-                className="profile-pic"
-              />
-              <h2>Alex Chen</h2>
-              <p className="email-text">alex.chen@example.com</p>
+              <div className="profile-pic-wrapper">
+                <img
+                  src={profilePhoto}
+                  alt="profile"
+                  className="profile-pic"
+                />
+                <button
+                  className="change-photo-btn"
+                  onClick={() => fileInputRef.current.click()}
+                  title="Change Profile Photo"
+                >
+                  📷
+                </button>
+              </div>
+              <h2>{profileData.fullName}</h2>
+              <p className="email-text">{profileData.email}</p>
               <span className="level-badge">Gold Level</span>
 
               <div className="stats-box">

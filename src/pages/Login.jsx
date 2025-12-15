@@ -87,16 +87,45 @@ export default function Login({ setPage, setIsLoggedIn, setUserRole }) {
         </div>
 
         <label className="lg-label">Role</label>
-        <div className="lg-select-wrap">
+        <div className="lg-select-wrap" style={{ position: 'relative' }}>
           <select
             className="lg-select"
             value={role}
             onChange={(e) => setRole(e.target.value)}
             aria-label="Select role"
+            style={{
+              width: '100%',
+              backgroundColor: '#ffffff',
+              color: '#374151',
+              border: '2px solid #7c3aed',
+              borderRadius: '12px',
+              padding: '14px 50px 14px 18px',
+              fontSize: '15px',
+              fontFamily: 'inherit',
+              fontWeight: '500',
+              appearance: 'none',
+              WebkitAppearance: 'none',
+              MozAppearance: 'none',
+              cursor: 'pointer',
+              outline: 'none',
+            }}
           >
-            <option value="User">User</option>
-            <option value="Admin">Admin</option>
+            <option value="User" style={{ backgroundColor: '#ffffff', color: '#374151' }}>User</option>
+            <option value="Admin" style={{ backgroundColor: '#ffffff', color: '#374151' }}>Admin</option>
           </select>
+          {/* Arrow indicator */}
+          <span style={{
+            position: 'absolute',
+            right: '16px',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            pointerEvents: 'none',
+            color: '#7c3aed',
+            fontSize: '14px',
+            fontWeight: 'bold',
+          }}>
+            ▼
+          </span>
         </div>
 
         <div className="lg-row">

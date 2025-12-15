@@ -103,7 +103,7 @@ function App() {
             {page === "leaderboard" && <Leaderboard />}
             {page === "upload" && <UploadProject />}
             {page === "profile" && <ProfileSettings isDark={isDarkTheme} toggleTheme={toggleTheme} setIsLoggedIn={setIsLoggedIn} setPage={setPage} onLogout={handleLogout} />}
-            {page === "admin" && userRole === "Admin" && <AdminDashboard />}
+            {page === "admin" && userRole === "Admin" && <AdminDashboard onLogout={handleLogout} isDark={isDarkTheme} toggleTheme={toggleTheme} />}
           </main>
         </div>
       )}

@@ -310,29 +310,46 @@ body {
 
 .lg-select {
   width: 100%;
-  padding: 14px 18px;
-  border-radius: 12px;
-  border: 2px solid var(--input-border);
-  font-size: 15px;
+  padding: 14px 50px 14px 18px !important;
+  border-radius: 12px !important;
+  border: 2px solid #7c3aed !important;
+  font-size: 15px !important;
   font-family: inherit;
-  background: rgba(255, 255, 255, 0.8);
-  appearance: none;
+  color: #ffffff !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
   cursor: pointer;
   transition: all 0.3s ease;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23667eea' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 16px center;
-  padding-right: 50px;
+  background-color: #1e1e32 !important;
+  background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMi41IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwb2x5bGluZSBwb2ludHM9IjYgOSAxMiAxNSAxOCA5Ij48L3BvbHlsaW5lPjwvc3ZnPg==") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 14px center !important;
+  background-size: 20px 20px !important;
+}
+
+.lg-select option {
+  background-color: #1e1e32 !important;
+  color: #ffffff !important;
+  padding: 12px 16px;
+}
+
+.lg-select option:checked,
+.lg-select option:hover {
+  background-color: #7c3aed !important;
+  color: #ffffff !important;
 }
 
 .lg-select:hover {
-  border-color: rgba(102, 126, 234, 0.4);
+  border-color: #a78bfa !important;
+  background-color: #2a2a45 !important;
 }
 
 .lg-select:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.15);
+  border-color: #a78bfa !important;
+  box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.2);
   outline: none;
+  background-color: #1e1e32 !important;
 }
 
 /* Remember me and forgot row */
