@@ -1,10 +1,12 @@
 import express from "express";
 import axios from "axios";
+import { query } from "../config/db.js";
 
 const router = express.Router();
 
 router.post("/", async (req, res) => {
-  const { inputCode } = req.body;
+  const { inputCode, userId, language = "javascript" } = req.body;
+
   if (!inputCode || !inputCode.trim()) {
     return res.status(400).json({ error: "No code provided." });
   }
@@ -113,6 +115,40 @@ ${inputCode}
 
       optimized: typeof parsed.optimized === "string" ? parsed.optimized : "",
     };
+
+    // ==========================================
+    // DATABASE PERSISTENCE LOGIC
+    // ==========================================
+    if (userId) {
+      try {
+        // Log Activity
+        await query(
+          `INSERT INTO activity_logs (user_id, activity_type, description, created_at)
+           VALUES ($1, 'code_analyzed', $2, NOW())`,
+          [userId, `Analyzed ${language} code`]
+        );
+
+        // Optional: Save detailed analysis
+        await query(
+          `INSERT INTO code_analyses 
+             (user_id, input_code, language, explanation, errors, complexity, flowchart, optimized_code)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [
+            userId,
+            inputCode,
+            language,
+            out.explanation.join("\n"),
+            out.errors,
+            out.complexity, // Ensure db column is JSONB
+            out.flowchart.join("\n"),
+            out.optimized
+          ]
+        );
+
+      } catch (dbError) {
+        console.error("Database log failed:", dbError);
+      }
+    }
 
     res.json(out);
   } catch (error) {

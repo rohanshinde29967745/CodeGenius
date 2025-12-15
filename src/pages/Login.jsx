@@ -26,21 +26,40 @@ export default function Login({ setPage, setIsLoggedIn, setUserRole }) {
 
     setLoading(true);
     try {
-      // TODO: replace with real auth (fetch/axios). This is a fake delay to simulate network.
-      await new Promise((r) => setTimeout(r, 700));
+      const response = await fetch("http://localhost:4000/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: email,
+          password: pass,
+          role: role,
+        }),
+      });
 
-      // For demo: allow any user to login with selected role
-      // In production, replace this with actual server authentication
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || "Login failed. Please try again.");
+        setLoading(false);
+        return;
+      }
+
+      // Store user data and token in localStorage
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
 
       // Set user role and mark as logged in
-      if (setUserRole) setUserRole(role);
+      if (setUserRole) setUserRole(data.user.role);
       setIsLoggedIn(true);
 
       // Route to appropriate page based on role
-      if (role === "Admin") setPage("admin");
+      if (data.user.role === "Admin") setPage("admin");
       else setPage("dashboard");
     } catch (err) {
-      setError("Login failed. Try again.");
+      console.error("Login error:", err);
+      setError("Unable to connect to server. Please try again.");
       setLoading(false);
     }
   };

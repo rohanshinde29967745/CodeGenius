@@ -1,10 +1,94 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { getUserStats, getUserActivity, getCurrentUser } from "../services/api";
 import "../App.css";
 
 function Dashboard({ setPage }) {
+  const [stats, setStats] = useState({
+    problemsSolved: 0,
+    totalPoints: 0,
+    accuracy: 0,
+    currentLevel: "Bronze",
+    currentXp: 0,
+    xpToNextLevel: 1000,
+  });
+  const [activities, setActivities] = useState([]);
+  const [user, setUser] = useState({ fullName: "User" });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const currentUser = getCurrentUser();
+      if (!currentUser) {
+        setLoading(false);
+        return;
+      }
+
+      setUser(currentUser);
+
+      try {
+        // Fetch user stats
+        const statsData = await getUserStats(currentUser.id);
+        if (statsData.stats) {
+          setStats(statsData.stats);
+        }
+
+        // Fetch recent activity
+        const activityData = await getUserActivity(currentUser.id, 5);
+        if (activityData.activities) {
+          setActivities(activityData.activities);
+        }
+      } catch (error) {
+        console.error("Failed to fetch dashboard data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // Format time ago
+  const formatTimeAgo = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 60) return `${diffMins} minutes ago`;
+    if (diffHours < 24) return `${diffHours} hours ago`;
+    return `${diffDays} days ago`;
+  };
+
+  // Get activity icon and color
+  const getActivityStyle = (type) => {
+    const styles = {
+      login: { icon: "🔵", color: "blue" },
+      registration: { icon: "🟢", color: "green" },
+      problem_solved: { icon: "✅", color: "green" },
+      problem_attempted: { icon: "🔄", color: "blue" },
+      code_analyzed: { icon: "🔵", color: "blue" },
+      code_converted: { icon: "🟣", color: "purple" },
+      project_uploaded: { icon: "📦", color: "purple" },
+      badge_earned: { icon: "🏅", color: "gold" },
+      level_up: { icon: "⭐", color: "gold" },
+    };
+    return styles[type] || { icon: "◉", color: "blue" };
+  };
+
+  if (loading) {
+    return (
+      <div className="dashboard-container">
+        <h1 className="welcome-text">Loading...</h1>
+      </div>
+    );
+  }
+
   return (
     <div className="dashboard-container">
-      <h1 className="welcome-text">Welcome back, Alex! 👋</h1>
+      <h1 className="welcome-text">Welcome back, {user.fullName?.split(" ")[0] || "User"}! 👋</h1>
       <p className="sub-text">
         Here's what's happening with your coding journey today.
       </p>
@@ -15,8 +99,8 @@ function Dashboard({ setPage }) {
             <h4>Problems Solved</h4>
             <span className="stat-icon">🎯</span>
           </div>
-          <h2>47</h2>
-          <p>+3 from last week</p>
+          <h2>{stats.problemsSolved}</h2>
+          <p>Keep solving!</p>
         </div>
 
         <div className="stat-card animated-border">
@@ -24,8 +108,8 @@ function Dashboard({ setPage }) {
             <h4>Total Points</h4>
             <span className="stat-icon">📈</span>
           </div>
-          <h2>2,850</h2>
-          <p>+180 from last week</p>
+          <h2>{stats.totalPoints.toLocaleString()}</h2>
+          <p>Great progress!</p>
         </div>
 
         <div className="stat-card animated-border">
@@ -33,8 +117,8 @@ function Dashboard({ setPage }) {
             <h4>Accuracy</h4>
             <span className="stat-icon">✓</span>
           </div>
-          <h2>89%</h2>
-          <p>+2% from last week</p>
+          <h2>{stats.accuracy}%</h2>
+          <p>Keep it up!</p>
         </div>
 
         <div className="stat-card animated-border">
@@ -42,11 +126,14 @@ function Dashboard({ setPage }) {
             <h4>Current Level</h4>
             <span className="stat-icon">👤</span>
           </div>
-          <h2>Gold</h2>
+          <h2>{stats.currentLevel}</h2>
           <div className="level-bar">
-            <div className="progress"></div>
+            <div
+              className="progress"
+              style={{ width: `${(stats.currentXp / stats.xpToNextLevel) * 100}%` }}
+            ></div>
           </div>
-          <p>750/1000 XP to Platinum</p>
+          <p>{stats.currentXp}/{stats.xpToNextLevel} XP to next level</p>
         </div>
       </div>
 
@@ -115,41 +202,29 @@ function Dashboard({ setPage }) {
           </div>
 
           <div className="activity-list">
-            <div className="activity-item">
-              <span className="activity-dot blue">◉</span>
-              <div className="activity-content">
-                <strong>Python Function Analyzed</strong>
-                <span>Binary search implementation</span>
-                <small>⏱ 2 hours ago</small>
+            {activities.length > 0 ? (
+              activities.map((activity) => {
+                const style = getActivityStyle(activity.type);
+                return (
+                  <div className="activity-item" key={activity.id}>
+                    <span className={`activity-dot ${style.color}`}>{style.icon}</span>
+                    <div className="activity-content">
+                      <strong>{activity.type.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase())}</strong>
+                      <span>{activity.description}</span>
+                      <small>⏱ {formatTimeAgo(activity.time)}</small>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="activity-item">
+                <span className="activity-dot blue">◉</span>
+                <div className="activity-content">
+                  <strong>Welcome to CodeGenius!</strong>
+                  <span>Start solving problems to see your activity here</span>
+                </div>
               </div>
-            </div>
-
-            <div className="activity-item">
-              <span className="activity-dot green">◉</span>
-              <div className="activity-content">
-                <strong>Problem Solved</strong>
-                <span>Two Sum - Easy</span>
-                <small>⏱ 5 hours ago</small>
-              </div>
-            </div>
-
-            <div className="activity-item">
-              <span className="activity-dot gold">🏅</span>
-              <div className="activity-content">
-                <strong>Badge Earned</strong>
-                <span>Code Optimizer</span>
-                <small>⏱ 1 day ago</small>
-              </div>
-            </div>
-
-            <div className="activity-item">
-              <span className="activity-dot purple">◉</span>
-              <div className="activity-content">
-                <strong>Code Converted</strong>
-                <span>Python to JavaScript</span>
-                <small>⏱ 2 days ago</small>
-              </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
@@ -158,11 +233,20 @@ function Dashboard({ setPage }) {
         <h3>Your Badges</h3>
         <p>Achievements you've earned on your coding journey</p>
         <div className="badge-row">
-          <span className="badge-item animated-border">🥉 Bronze</span>
-          <span className="badge-item animated-border">🥈 Silver</span>
-          <span className="badge-item animated-border">🥇 Gold</span>
-          <span className="badge-item animated-border">🏆 Problem Solver</span>
-          <span className="badge-item animated-border">💡 Code Optimizer</span>
+          {stats.currentLevel === "Bronze" && <span className="badge-item animated-border">🥉 Bronze</span>}
+          {(stats.currentLevel === "Silver" || stats.currentLevel === "Gold" || stats.currentLevel === "Platinum") && (
+            <>
+              <span className="badge-item animated-border">🥉 Bronze</span>
+              <span className="badge-item animated-border">🥈 Silver</span>
+            </>
+          )}
+          {(stats.currentLevel === "Gold" || stats.currentLevel === "Platinum") && (
+            <span className="badge-item animated-border">🥇 Gold</span>
+          )}
+          {stats.currentLevel === "Platinum" && (
+            <span className="badge-item animated-border">💎 Platinum</span>
+          )}
+          {stats.accuracy >= 90 && <span className="badge-item animated-border">🏆 Problem Solver</span>}
         </div>
       </div>
 
@@ -171,10 +255,10 @@ function Dashboard({ setPage }) {
         <p>Complete today's challenge to earn bonus points!</p>
         <div className="challenge-box">
           <div>
-            <h3>Implement a Binary Search Tree</h3>
-            <p>Difficulty: Medium • Reward: 150 points</p>
+            <h3>Solve a New Problem</h3>
+            <p>Difficulty: Easy • Reward: 50 points</p>
           </div>
-          <button className="start-btn">Start Challenge</button>
+          <button className="start-btn" onClick={() => setPage("problemSolving")}>Start Challenge</button>
         </div>
       </div>
     </div>
@@ -182,4 +266,3 @@ function Dashboard({ setPage }) {
 }
 
 export default Dashboard;
-

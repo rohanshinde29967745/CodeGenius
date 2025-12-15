@@ -1,11 +1,12 @@
 import express from "express";
 import axios from "axios";
+import { query } from "../config/db.js";
 
 const router = express.Router();
 
 router.post("/", async (req, res) => {
   try {
-    const { inputLang, outputLang, inputCode } = req.body;
+    const { inputLang, outputLang, inputCode, userId } = req.body;
 
     if (!inputCode || !inputLang || !outputLang) {
       return res.status(400).json({ error: "Missing inputLang/outputLang/inputCode" });
@@ -51,8 +52,35 @@ ${inputCode}
       return res.status(500).json({ error: "No output from Gemini" });
     }
 
+    const convertedCode = String(converted).trim();
+
+    // ==========================================
+    // DATABASE PERSISTENCE LOGIC
+    // ==========================================
+    if (userId) {
+      try {
+        // Log Activity
+        await query(
+          `INSERT INTO activity_logs (user_id, activity_type, description, created_at)
+            VALUES ($1, 'code_converted', $2, NOW())`,
+          [userId, `Converted ${inputLang} to ${outputLang}`]
+        );
+
+        // Optional: Save conversion
+        await query(
+          `INSERT INTO code_conversions 
+             (user_id, source_language, target_language, source_code, converted_code)
+             VALUES ($1, $2, $3, $4, $5)`,
+          [userId, inputLang, outputLang, inputCode, convertedCode]
+        );
+
+      } catch (dbError) {
+        console.error("Database log failed:", dbError);
+      }
+    }
+
     // Trim any leading/trailing whitespace
-    res.json({ convertedCode: String(converted).trim() });
+    res.json({ convertedCode });
   } catch (err) {
     console.error("Convert error:", err?.response?.data || err.message || err);
     res.status(500).json({ error: "Conversion failed", details: err?.message || err });

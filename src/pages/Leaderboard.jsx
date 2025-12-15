@@ -1,40 +1,121 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
+import { getLeaderboard, getUserRank, getUserBadges, getCurrentUser, getUserStats } from "../services/api";
 import "../App.css";
 
 function Leaderboard() {
   const [activeTab, setActiveTab] = useState("leaderboard");
-  const [timeFilter, setTimeFilter] = useState("allTime");
+  const [timeFilter, setTimeFilter] = useState("all_time");
+  const [leaderboardData, setLeaderboardData] = useState([]);
+  const [topThree, setTopThree] = useState([]);
+  const [userRank, setUserRank] = useState(0);
+  const [badges, setBadges] = useState([]);
+  const [userStats, setUserStats] = useState({ problemsSolved: 0, accuracy: 0, currentStreak: 0 });
+  const [loading, setLoading] = useState(true);
 
-  // ALL TIME USERS FOR GLOBAL LEADERBOARD
-  const allTimeUsers = [
-    { name: "Sarah Chen", initials: "SC", badge: "Platinum", title: "Code Master", problems: 287, points: 8950, accuracy: "94%" },
-    { name: "Marcus Rodriguez", initials: "MR", badge: "Gold", title: "Problem Solver", problems: 245, points: 8240, accuracy: "92%" },
-    { name: "Emily Zhang", initials: "EZ", badge: "Silver", title: "", problems: 189, points: 6150, accuracy: "88%" },
-    { name: "John Carter", initials: "JC", badge: "Bronze", title: "", problems: 156, points: 5100, accuracy: "81%" },
-    { name: "Aditi Mehra", initials: "AM", badge: "Platinum", title: "Speed Demon", problems: 312, points: 9800, accuracy: "95%" },
-    { name: "Michael Lee", initials: "ML", badge: "Gold", title: "", problems: 234, points: 7700, accuracy: "90%" },
-    { name: "Samantha Ray", initials: "SR", badge: "Bronze", title: "", problems: 98, points: 4200, accuracy: "75%" },
-    { name: "Daniel Kim", initials: "DK", badge: "Silver", title: "", problems: 167, points: 5600, accuracy: "84%" },
-    { name: "Priya Sinha", initials: "PS", badge: "Gold", title: "", problems: 223, points: 7300, accuracy: "89%" },
-    { name: "Tom Wilson", initials: "TW", badge: "Silver", title: "", problems: 178, points: 5800, accuracy: "85%" },
-  ];
+  const fetchLeaderboard = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await getLeaderboard(timeFilter, 50);
+      setLeaderboardData(data.leaderboard || []);
+      setTopThree(data.topThree || []);
 
-  // THIS MONTH USERS - Different ordering/data for this month
-  const thisMonthUsers = [
-    { name: "Aditi Mehra", initials: "AM", badge: "Platinum", title: "Speed Demon", problems: 45, points: 1450, accuracy: "96%" },
-    { name: "Sarah Chen", initials: "SC", badge: "Platinum", title: "Code Master", problems: 38, points: 1220, accuracy: "95%" },
-    { name: "Michael Lee", initials: "ML", badge: "Gold", title: "", problems: 32, points: 1080, accuracy: "91%" },
-    { name: "Marcus Rodriguez", initials: "MR", badge: "Gold", title: "Problem Solver", problems: 28, points: 920, accuracy: "93%" },
-    { name: "Priya Sinha", initials: "PS", badge: "Gold", title: "", problems: 25, points: 840, accuracy: "88%" },
-    { name: "Daniel Kim", initials: "DK", badge: "Silver", title: "", problems: 22, points: 720, accuracy: "86%" },
-    { name: "Emily Zhang", initials: "EZ", badge: "Silver", title: "", problems: 19, points: 620, accuracy: "84%" },
-    { name: "Tom Wilson", initials: "TW", badge: "Silver", title: "", problems: 16, points: 540, accuracy: "82%" },
-    { name: "John Carter", initials: "JC", badge: "Bronze", title: "", problems: 12, points: 380, accuracy: "79%" },
-    { name: "Samantha Ray", initials: "SR", badge: "Bronze", title: "", problems: 8, points: 260, accuracy: "75%" },
-  ];
+      // Get current user's rank
+      const currentUser = getCurrentUser();
+      if (currentUser) {
+        const rankData = await getUserRank(currentUser.id);
+        setUserRank(rankData.rank || 0);
+      }
+    } catch (error) {
+      console.error("Failed to fetch leaderboard:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [timeFilter]);
 
-  // Get users based on selected filter
-  const displayUsers = timeFilter === "allTime" ? allTimeUsers : thisMonthUsers;
+  const fetchBadges = useCallback(async () => {
+    try {
+      const currentUser = getCurrentUser();
+      if (currentUser) {
+        // Fetch both badges and user stats
+        const [badgeData, statsData] = await Promise.all([
+          getUserBadges(currentUser.id),
+          getUserStats(currentUser.id)
+        ]);
+
+        const stats = statsData.stats || { problemsSolved: 0, accuracy: 0, currentStreak: 0 };
+        setUserStats(stats);
+
+        // Calculate progress for each badge based on user stats
+        const badgesWithProgress = (badgeData.badges || []).map(badge => {
+          let progress = badge.progress || 0;
+
+          // If progress is 0 and not earned, calculate it from stats
+          if (progress === 0 && !badge.isEarned) {
+            const reqValue = badge.requirementValue || 1;
+            switch (badge.requirementType) {
+              case 'problems_solved':
+                progress = Math.min(100, Math.round((stats.problemsSolved / reqValue) * 100));
+                break;
+              case 'accuracy_rate':
+                progress = Math.min(100, Math.round((stats.accuracy / reqValue) * 100));
+                break;
+              case 'streak':
+                progress = Math.min(100, Math.round((stats.currentStreak / reqValue) * 100));
+                break;
+              default:
+                progress = 0;
+            }
+          }
+
+          return { ...badge, progress: badge.isEarned ? 100 : progress };
+        });
+
+        setBadges(badgesWithProgress);
+      }
+    } catch (error) {
+      console.error("Failed to fetch badges:", error);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchLeaderboard();
+  }, [fetchLeaderboard]);
+
+  useEffect(() => {
+    if (activeTab === "badges") {
+      fetchBadges();
+    }
+  }, [activeTab, fetchBadges]);
+
+  // Get badge icon
+  const getBadgeIcon = (name) => {
+    const icons = {
+      Bronze: "🏆",
+      Silver: "🛡️",
+      Gold: "👑",
+      Platinum: "💎",
+      "Problem Solver": "◉",
+      "Code Optimizer": "<>",
+      "Speed Demon": "⏱",
+      "Streak Master": "⭐",
+    };
+    return icons[name] || "🏅";
+  };
+
+  // Get badge color class
+  const getBadgeColorClass = (color) => {
+    const classes = {
+      bronze: "bronze",
+      silver: "silver",
+      gold: "gold",
+      platinum: "platinum",
+      green: "problem-solver",
+      blue: "code-optimizer",
+      red: "speed-demon",
+      pink: "streak-master",
+    };
+    return classes[color] || "";
+  };
 
   return (
     <div className="dashboard-container">
@@ -46,7 +127,7 @@ function Leaderboard() {
         </div>
         <div className="rank-indicator">
           <span className="rank-label">🏅 Rank</span>
-          <span className="rank-number">#4</span>
+          <span className="rank-number">#{userRank || "-"}</span>
         </div>
       </div>
 
@@ -73,29 +154,47 @@ function Leaderboard() {
           {/* TOP PERFORMERS */}
           <div className="top-performers-box">
             <h3>🏆 Top Performers</h3>
-            <p>The highest-ranking developers this month</p>
+            <p>The highest-ranking developers {timeFilter === "this_month" ? "this month" : "of all time"}</p>
 
             <div className="top-row">
               {/* 2nd Place */}
-              <div className="top-card second-place">
-                <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="" />
-                <h4>Marcus Rodriguez</h4>
-                <p>8,240 pts</p>
-              </div>
+              {topThree[1] && (
+                <div className="top-card second-place">
+                  {topThree[1].profilePhoto ? (
+                    <img src={topThree[1].profilePhoto} alt="" />
+                  ) : (
+                    <div className="avatar-placeholder">{topThree[1].initials}</div>
+                  )}
+                  <h4>{topThree[1].name}</h4>
+                  <p>{topThree[1].points.toLocaleString()} pts</p>
+                </div>
+              )}
 
               {/* 1st Place */}
-              <div className="top-card top-winner">
-                <img src="https://randomuser.me/api/portraits/women/44.jpg" alt="" />
-                <h4>Sarah Chen</h4>
-                <p>8,950 pts</p>
-              </div>
+              {topThree[0] && (
+                <div className="top-card top-winner">
+                  {topThree[0].profilePhoto ? (
+                    <img src={topThree[0].profilePhoto} alt="" />
+                  ) : (
+                    <div className="avatar-placeholder">{topThree[0].initials}</div>
+                  )}
+                  <h4>{topThree[0].name}</h4>
+                  <p>{topThree[0].points.toLocaleString()} pts</p>
+                </div>
+              )}
 
               {/* 3rd Place */}
-              <div className="top-card third-place">
-                <img src="https://randomuser.me/api/portraits/women/50.jpg" alt="" />
-                <h4>Emily Zhang</h4>
-                <p>6,150 pts</p>
-              </div>
+              {topThree[2] && (
+                <div className="top-card third-place">
+                  {topThree[2].profilePhoto ? (
+                    <img src={topThree[2].profilePhoto} alt="" />
+                  ) : (
+                    <div className="avatar-placeholder">{topThree[2].initials}</div>
+                  )}
+                  <h4>{topThree[2].name}</h4>
+                  <p>{topThree[2].points.toLocaleString()} pts</p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -104,14 +203,14 @@ function Leaderboard() {
             <h3 className="gl-title">Global Leaderboard</h3>
             <div className="filter-bar">
               <button
-                className={`filter-btn ${timeFilter === "allTime" ? "active" : ""}`}
-                onClick={() => setTimeFilter("allTime")}
+                className={`filter-btn ${timeFilter === "all_time" ? "active" : ""}`}
+                onClick={() => setTimeFilter("all_time")}
               >
                 All Time
               </button>
               <button
-                className={`filter-btn ${timeFilter === "thisMonth" ? "active" : ""}`}
-                onClick={() => setTimeFilter("thisMonth")}
+                className={`filter-btn ${timeFilter === "this_month" ? "active" : ""}`}
+                onClick={() => setTimeFilter("this_month")}
               >
                 This Month
               </button>
@@ -129,22 +228,27 @@ function Leaderboard() {
           </div>
 
           <div className="global-table">
-            {displayUsers.map((user, index) => (
-              <div key={index} className="gl-row">
-                <span className="crown-col">👑</span>
-                <span className="initials-col">{user.initials}</span>
-                <div className="user-info-col">
-                  <span className="user-name">{user.name}</span>
-                  <div className="user-badges">
-                    <span className="badge-tag">{user.badge}</span>
-                    {user.title && <span className="title-tag">{user.title}</span>}
+            {loading ? (
+              <div className="gl-row">Loading...</div>
+            ) : leaderboardData.length > 0 ? (
+              leaderboardData.map((user, index) => (
+                <div key={user.id || index} className="gl-row">
+                  <span className="crown-col">{index < 3 ? "👑" : ""}</span>
+                  <span className="initials-col">{user.initials}</span>
+                  <div className="user-info-col">
+                    <span className="user-name">{user.name}</span>
+                    <div className="user-badges">
+                      <span className="badge-tag">{user.level}</span>
+                    </div>
                   </div>
+                  <span className="problems-col">{user.problemsSolved}</span>
+                  <span className="points-col">{user.points.toLocaleString()}</span>
+                  <span className="accuracy-col">{user.accuracy}%</span>
                 </div>
-                <span className="problems-col">{user.problems}</span>
-                <span className="points-col">{user.points.toLocaleString()}</span>
-                <span className="accuracy-col">{user.accuracy}</span>
-              </div>
-            ))}
+              ))
+            ) : (
+              <div className="gl-row">No data available. Be the first to climb the leaderboard!</div>
+            )}
           </div>
         </>
       )}
@@ -156,74 +260,76 @@ function Leaderboard() {
           <p>Unlock badges by solving problems and improving your coding skills</p>
 
           <div className="badge-grid">
-            <div className="badge-card bronze">
-              <div className="badge-icon bronze-icon">🏆</div>
-              <h4>Bronze</h4>
-              <p>Solve 10 problems</p>
-              <span className="earned-tag">✔ Earned</span>
-            </div>
+            {badges.length > 0 ? (
+              badges.map((badge) => (
+                <div
+                  key={badge.id}
+                  className={`badge-card ${getBadgeColorClass(badge.color)} ${badge.isEarned ? "" : "locked"}`}
+                >
+                  <div className={`badge-icon ${badge.color}-icon`}>{getBadgeIcon(badge.name)}</div>
+                  <h4>{badge.name}</h4>
+                  <p>{badge.description}</p>
+                  {badge.isEarned ? (
+                    <span className="earned-tag">✔ Earned</span>
+                  ) : (
+                    <>
+                      <div className="progress-bar">
+                        <div className="progress-fill" style={{ width: `${badge.progress}%` }}></div>
+                      </div>
+                      <small>{badge.progress}% complete</small>
+                    </>
+                  )}
+                </div>
+              ))
+            ) : (
+              // Default badges if none loaded - use userStats for progress
+              <>
+                <div className="badge-card bronze">
+                  <div className="badge-icon bronze-icon">🏆</div>
+                  <h4>Bronze</h4>
+                  <p>Solve 10 problems</p>
+                  <div className="progress-bar">
+                    <div className="progress-fill" style={{ width: `${Math.min(100, Math.round((userStats.problemsSolved / 10) * 100))}%` }}></div>
+                  </div>
+                  <small>{Math.min(100, Math.round((userStats.problemsSolved / 10) * 100))}% complete</small>
+                </div>
 
-            <div className="badge-card silver">
-              <div className="badge-icon silver-icon">🛡️</div>
-              <h4>Silver</h4>
-              <p>Solve 25 problems</p>
-              <span className="earned-tag">✔ Earned</span>
-            </div>
+                <div className="badge-card silver">
+                  <div className="badge-icon silver-icon">🛡️</div>
+                  <h4>Silver</h4>
+                  <p>Solve 25 problems</p>
+                  <div className="progress-bar">
+                    <div className="progress-fill" style={{ width: `${Math.min(100, Math.round((userStats.problemsSolved / 25) * 100))}%` }}></div>
+                  </div>
+                  <small>{Math.min(100, Math.round((userStats.problemsSolved / 25) * 100))}% complete</small>
+                </div>
 
-            <div className="badge-card gold">
-              <div className="badge-icon gold-icon">👑</div>
-              <h4>Gold</h4>
-              <p>Solve 50 problems</p>
-              <span className="earned-tag">✔ Earned</span>
-            </div>
+                <div className="badge-card gold">
+                  <div className="badge-icon gold-icon">👑</div>
+                  <h4>Gold</h4>
+                  <p>Solve 50 problems</p>
+                  <div className="progress-bar">
+                    <div className="progress-fill" style={{ width: `${Math.min(100, Math.round((userStats.problemsSolved / 50) * 100))}%` }}></div>
+                  </div>
+                  <small>{Math.min(100, Math.round((userStats.problemsSolved / 50) * 100))}% complete</small>
+                </div>
 
-            <div className="badge-card platinum">
-              <div className="badge-icon platinum-icon">💎</div>
-              <h4>Platinum</h4>
-              <p>Solve 100 problems</p>
-              <div className="progress-bar">
-                <div className="progress-fill" style={{ width: "47%" }}></div>
-              </div>
-              <small>47% complete</small>
-            </div>
-
-            <div className="badge-card problem-solver">
-              <div className="badge-icon green-icon">◉</div>
-              <h4>Problem Solver</h4>
-              <p>90%+ accuracy rate</p>
-              <span className="earned-tag">✔ Earned</span>
-            </div>
-
-            <div className="badge-card code-optimizer">
-              <div className="badge-icon blue-icon">{"<>"}</div>
-              <h4>Code Optimizer</h4>
-              <p>Submit optimal solutions</p>
-              <span className="earned-tag">✔ Earned</span>
-            </div>
-
-            <div className="badge-card speed-demon">
-              <div className="badge-icon red-icon">⏱</div>
-              <h4>Speed Demon</h4>
-              <p>Fast submission times</p>
-              <div className="progress-bar">
-                <div className="progress-fill" style={{ width: "65%" }}></div>
-              </div>
-              <small>65% complete</small>
-            </div>
-
-            <div className="badge-card streak-master">
-              <div className="badge-icon pink-icon">⭐</div>
-              <h4>Streak Master</h4>
-              <p>30-day solving streak</p>
-              <div className="progress-bar">
-                <div className="progress-fill" style={{ width: "10%" }}></div>
-              </div>
-              <small>10% complete</small>
-            </div>
+                <div className="badge-card platinum">
+                  <div className="badge-icon platinum-icon">💎</div>
+                  <h4>Platinum</h4>
+                  <p>Solve 100 problems</p>
+                  <div className="progress-bar">
+                    <div className="progress-fill" style={{ width: `${Math.min(100, Math.round((userStats.problemsSolved / 100) * 100))}%` }}></div>
+                  </div>
+                  <small>{Math.min(100, Math.round((userStats.problemsSolved / 100) * 100))}% complete</small>
+                </div>
+              </>
+            )}
           </div>
         </div>
-      )}
-    </div>
+      )
+      }
+    </div >
   );
 }
 

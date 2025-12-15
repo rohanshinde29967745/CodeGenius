@@ -31,35 +31,32 @@ export default function Register({ setPage }) {
 
         setLoading(true);
         try {
-            // Simulate network delay
-            await new Promise((r) => setTimeout(r, 500));
+            const response = await fetch("http://localhost:4000/api/auth/register", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    fullName: name.trim(),
+                    email: email,
+                    password: pass,
+                    role: role,
+                }),
+            });
 
-            // Get existing users from localStorage
-            const existingUsers = JSON.parse(localStorage.getItem("codegenius_users") || "[]");
+            const data = await response.json();
 
-            // Check if email already exists
-            if (existingUsers.find((u) => u.email.toLowerCase() === email.toLowerCase())) {
-                setError("An account with this email already exists.");
+            if (!response.ok) {
+                setError(data.error || "Registration failed. Please try again.");
                 setLoading(false);
                 return;
             }
 
-            // Add new user
-            const newUser = {
-                id: Date.now(),
-                name: name.trim(),
-                email: email.toLowerCase(),
-                password: pass, // In production, hash this!
-                role,
-                createdAt: new Date().toISOString(),
-            };
-            existingUsers.push(newUser);
-            localStorage.setItem("codegenius_users", JSON.stringify(existingUsers));
-
             setSuccess("Account created successfully! Redirecting to login...");
             setTimeout(() => setPage("login"), 1500);
         } catch (err) {
-            setError("Registration failed. Please try again.");
+            console.error("Registration error:", err);
+            setError("Unable to connect to server. Please try again.");
             setLoading(false);
         }
     };

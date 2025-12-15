@@ -1,4 +1,5 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
+import { getCurrentUser, getProfile, updateUserProfile, getUserProjects, getUserStats, getUserBadges, getUserSkills } from "../services/api";
 import "../App.css";
 
 function ProfileSettings({ isDark, toggleTheme, setIsLoggedIn, setPage }) {
@@ -6,29 +7,133 @@ function ProfileSettings({ isDark, toggleTheme, setIsLoggedIn, setPage }) {
   const [expandedCategory, setExpandedCategory] = useState(null);
   const [selectedProject, setSelectedProject] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [profilePhoto, setProfilePhoto] = useState("https://randomuser.me/api/portraits/men/32.jpg");
+  const [profilePhoto, setProfilePhoto] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   // Ref for file input
   const fileInputRef = useRef(null);
 
   // Personal Info State
   const [profileData, setProfileData] = useState({
-    fullName: "Alex Chen",
-    email: "alex.chen@example.com",
-    bio: "Passionate full-stack developer with expertise in React, Node.js, and Python.",
-    location: "San Francisco, CA",
-    github: "github.com/alexchen",
-    linkedin: "linkedin.com/in/alexchen"
+    fullName: "",
+    email: "",
+    bio: "",
+    location: "",
+    github: "",
+    linkedin: ""
   });
 
+  // Stats state
+  const [stats, setStats] = useState({
+    problemsSolved: 0,
+    accuracy: 0,
+    currentLevel: "Bronze",
+    currentXp: 0,
+    xpToNextLevel: 1000,
+    totalPoints: 0,
+    currentStreak: 0,
+    rank: 0
+  });
+
+  // User projects from database
+  const [userProjects, setUserProjects] = useState([]);
+
+  // User badges from database
+  const [badges, setBadges] = useState([]);
+
+  // User skills from database
+  const [skills, setSkills] = useState([]);
+
+  // Load user data from API
+  useEffect(() => {
+    const fetchUserData = async () => {
+      const currentUser = getCurrentUser();
+      if (!currentUser) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        // Fetch profile
+        const data = await getProfile(currentUser.id);
+        if (data.user) {
+          setProfileData({
+            fullName: data.user.fullName || "",
+            email: data.user.email || "",
+            bio: data.user.bio || "",
+            location: data.user.location || "",
+            github: data.user.github || "",
+            linkedin: data.user.linkedin || ""
+          });
+          setProfilePhoto(data.user.profilePhoto || "");
+        }
+
+        // Fetch stats
+        const statsData = await getUserStats(currentUser.id);
+        if (statsData.stats) {
+          setStats({
+            problemsSolved: statsData.stats.problemsSolved || 0,
+            accuracy: statsData.stats.accuracy || 0,
+            currentLevel: statsData.stats.currentLevel || "Bronze",
+            currentXp: statsData.stats.currentXp || 0,
+            xpToNextLevel: statsData.stats.xpToNextLevel || 1000,
+            totalPoints: statsData.stats.totalPoints || 0,
+            currentStreak: statsData.stats.currentStreak || 0,
+            rank: statsData.stats.rank || 0
+          });
+        }
+
+        // Fetch user's projects
+        const projectsData = await getUserProjects(currentUser.id);
+        setUserProjects(projectsData.projects || []);
+
+        // Fetch badges
+        const badgesData = await getUserBadges(currentUser.id);
+        setBadges(badgesData.badges || []);
+
+        // Fetch skills
+        const skillsData = await getUserSkills(currentUser.id);
+        setSkills(skillsData.skills || []);
+
+      } catch (error) {
+        console.error("Failed to fetch user data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, []);
+
   const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
     setIsLoggedIn(false);
     setPage("home");
   };
 
-  const handleSaveProfile = () => {
-    setIsEditing(false);
-    // In real app, save to backend
+  const handleSaveProfile = async () => {
+    const currentUser = getCurrentUser();
+    if (!currentUser) return;
+
+    setSaving(true);
+    try {
+      await updateUserProfile(currentUser.id, {
+        fullName: profileData.fullName,
+        bio: profileData.bio,
+        location: profileData.location,
+        github: profileData.github,
+        linkedin: profileData.linkedin,
+        profilePhoto: profilePhoto
+      });
+      setIsEditing(false);
+    } catch (error) {
+      console.error("Failed to save profile:", error);
+      alert("Failed to save profile. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   // Handle profile photo change
@@ -43,52 +148,69 @@ function ProfileSettings({ isDark, toggleTheme, setIsLoggedIn, setPage }) {
     }
   };
 
-  // Project data organized by category
-  const projectCategories = {
-    "Web Development": {
-      icon: "🌐",
-      projects: [
-        { name: "E-Commerce Platform", tech: "React, Node.js, MongoDB", date: "Dec 2024", description: "A full-stack e-commerce platform with user authentication, product catalog, shopping cart, and payment integration." },
-        { name: "Portfolio Website", tech: "React, Tailwind CSS", date: "Nov 2024", description: "Personal portfolio showcasing projects and skills with modern design and animations." },
-        { name: "Task Management App", tech: "Vue.js, Firebase", date: "Oct 2024", description: "Collaborative task management tool with real-time updates and team features." },
-        { name: "Blog Platform", tech: "Next.js, Prisma", date: "Sep 2024", description: "Full-featured blog with markdown support, comments, and SEO optimization." }
-      ]
-    },
-    "Data Science": {
-      icon: "📊",
-      projects: [
-        { name: "Sales Prediction Model", tech: "Python, Scikit-learn, Pandas", date: "Nov 2024", description: "Machine learning model predicting sales trends with 92% accuracy using historical data." },
-        { name: "Customer Segmentation", tech: "Python, K-Means, Matplotlib", date: "Oct 2024", description: "Clustering analysis for customer behavior patterns and targeted marketing." }
-      ]
-    },
-    "Machine Learning": {
-      icon: "🤖",
-      projects: [
-        { name: "Image Classifier", tech: "TensorFlow, CNN, Python", date: "Dec 2024", description: "Deep learning model for image classification with 95% accuracy on custom dataset." }
-      ]
-    },
-    "Mobile Apps": {
-      icon: "📱",
-      projects: [
-        { name: "Fitness Tracker", tech: "React Native, Firebase", date: "Nov 2024", description: "Cross-platform mobile app for tracking workouts, nutrition, and health goals." }
-      ]
-    },
-    "Collaboration Projects": {
-      icon: "🤝",
-      projects: [
-        { name: "Open Source CMS", tech: "Python, Django", date: "Dec 2024", description: "Contributed to open-source content management system with 500+ stars." },
-        { name: "Community Forum", tech: "React, GraphQL", date: "Nov 2024", description: "Team project building a developer community discussion platform." },
-        { name: "Code Review Tool", tech: "TypeScript, Node.js", date: "Oct 2024", description: "Collaborative code review platform with inline comments and suggestions." },
-        { name: "Documentation Site", tech: "Docusaurus, MDX", date: "Sep 2024", description: "Technical documentation website for an open-source library." },
-        { name: "API Gateway", tech: "Go, Docker", date: "Aug 2024", description: "High-performance API gateway for microservices architecture." }
-      ]
+  // Group projects by category
+  const groupedProjects = userProjects.reduce((acc, project) => {
+    const category = project.category || "Other";
+    if (!acc[category]) {
+      acc[category] = { icon: getCategoryIcon(category), projects: [] };
     }
-  };
+    acc[category].projects.push(project);
+    return acc;
+  }, {});
+
+  function getCategoryIcon(category) {
+    const icons = {
+      "Web Development": "🌐",
+      "Data Science": "📊",
+      "Machine Learning": "🤖",
+      "Mobile Apps": "📱",
+      "Other": "📁"
+    };
+    return icons[category] || "📁";
+  }
 
   const toggleCategory = (category) => {
     setExpandedCategory(expandedCategory === category ? null : category);
     setSelectedProject(null);
   };
+
+  // Get badge icon
+  const getBadgeIcon = (name) => {
+    const icons = {
+      Bronze: "🏆",
+      Silver: "🛡️",
+      Gold: "👑",
+      Platinum: "💎",
+      "Problem Solver": "◎",
+      "Code Optimizer": "<>",
+      "Speed Demon": "⏱",
+      "Streak Master": "⭐"
+    };
+    return icons[name] || "🏅";
+  };
+
+  // Get badge background class
+  const getBadgeBgClass = (color) => {
+    const classes = {
+      bronze: "bronze-bg",
+      silver: "silver-bg",
+      gold: "gold-bg",
+      platinum: "platinum-bg",
+      green: "green-bg",
+      blue: "blue-bg",
+      red: "red-bg",
+      pink: "pink-bg"
+    };
+    return classes[color] || "bronze-bg";
+  };
+
+  if (loading) {
+    return (
+      <div className="dashboard-container profile-settings-page">
+        <h1 className="welcome-text">Loading profile...</h1>
+      </div>
+    );
+  }
 
   return (
     <div className="dashboard-container profile-settings-page">
@@ -126,11 +248,17 @@ function ProfileSettings({ isDark, toggleTheme, setIsLoggedIn, setPage }) {
           <div className="profile-left">
             <div className="profile-pic-box">
               <div className="profile-pic-wrapper">
-                <img
-                  src={profilePhoto}
-                  alt="profile"
-                  className="profile-pic"
-                />
+                {profilePhoto ? (
+                  <img
+                    src={profilePhoto}
+                    alt="profile"
+                    className="profile-pic"
+                  />
+                ) : (
+                  <div className="profile-pic-placeholder">
+                    {profileData.fullName ? profileData.fullName.charAt(0).toUpperCase() : "?"}
+                  </div>
+                )}
                 <button
                   className="change-photo-btn"
                   onClick={() => fileInputRef.current.click()}
@@ -139,26 +267,26 @@ function ProfileSettings({ isDark, toggleTheme, setIsLoggedIn, setPage }) {
                   📷
                 </button>
               </div>
-              <h2>{profileData.fullName}</h2>
+              <h2>{profileData.fullName || "User"}</h2>
               <p className="email-text">{profileData.email}</p>
-              <span className="level-badge">Gold Level</span>
+              <span className="level-badge">{stats.currentLevel} Level</span>
 
               <div className="stats-box">
                 <div>
-                  <h2>47</h2>
+                  <h2>{stats.problemsSolved}</h2>
                   <p>Problems Solved</p>
                 </div>
                 <div>
-                  <h2>89%</h2>
+                  <h2>{stats.accuracy}%</h2>
                   <p>Accuracy</p>
                 </div>
               </div>
 
-              <p className="progress-title">Progress to Platinum</p>
+              <p className="progress-title">Progress to Next Level</p>
               <div className="progress-bar">
-                <div className="progress-fill" style={{ width: "75%" }} />
+                <div className="progress-fill" style={{ width: `${(stats.currentXp / stats.xpToNextLevel) * 100}%` }} />
               </div>
-              <small>750 / 1000 XP</small>
+              <small>{stats.currentXp} / {stats.xpToNextLevel} XP</small>
             </div>
           </div>
 
@@ -168,7 +296,9 @@ function ProfileSettings({ isDark, toggleTheme, setIsLoggedIn, setPage }) {
               <div className="info-header">
                 <h3>Personal Information</h3>
                 {isEditing ? (
-                  <button className="save-btn" onClick={handleSaveProfile}>💾 Save</button>
+                  <button className="save-btn" onClick={handleSaveProfile} disabled={saving}>
+                    {saving ? "Saving..." : "💾 Save"}
+                  </button>
                 ) : (
                   <button className="edit-btn-pro" onClick={() => setIsEditing(true)}>✏️ Edit</button>
                 )}
@@ -185,22 +315,13 @@ function ProfileSettings({ isDark, toggleTheme, setIsLoggedIn, setPage }) {
                       onChange={(e) => setProfileData({ ...profileData, fullName: e.target.value })}
                     />
                   ) : (
-                    <p>{profileData.fullName}</p>
+                    <p>{profileData.fullName || "Not set"}</p>
                   )}
                 </div>
 
                 <div className="info-item">
                   <label>Email</label>
-                  {isEditing ? (
-                    <input
-                      type="email"
-                      className="edit-input"
-                      value={profileData.email}
-                      onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
-                    />
-                  ) : (
-                    <p>{profileData.email}</p>
-                  )}
+                  <p>{profileData.email}</p>
                 </div>
 
                 <div className="info-item full">
@@ -210,9 +331,10 @@ function ProfileSettings({ isDark, toggleTheme, setIsLoggedIn, setPage }) {
                       className="edit-textarea"
                       value={profileData.bio}
                       onChange={(e) => setProfileData({ ...profileData, bio: e.target.value })}
+                      placeholder="Tell us about yourself..."
                     />
                   ) : (
-                    <p>{profileData.bio}</p>
+                    <p>{profileData.bio || "No bio yet"}</p>
                   )}
                 </div>
 
@@ -224,9 +346,10 @@ function ProfileSettings({ isDark, toggleTheme, setIsLoggedIn, setPage }) {
                       className="edit-input"
                       value={profileData.location}
                       onChange={(e) => setProfileData({ ...profileData, location: e.target.value })}
+                      placeholder="City, Country"
                     />
                   ) : (
-                    <p>{profileData.location}</p>
+                    <p>{profileData.location || "Not set"}</p>
                   )}
                 </div>
 
@@ -238,9 +361,10 @@ function ProfileSettings({ isDark, toggleTheme, setIsLoggedIn, setPage }) {
                       className="edit-input"
                       value={profileData.github}
                       onChange={(e) => setProfileData({ ...profileData, github: e.target.value })}
+                      placeholder="github.com/username"
                     />
                   ) : (
-                    <p>{profileData.github}</p>
+                    <p>{profileData.github || "Not set"}</p>
                   )}
                 </div>
 
@@ -252,9 +376,10 @@ function ProfileSettings({ isDark, toggleTheme, setIsLoggedIn, setPage }) {
                       className="edit-input"
                       value={profileData.linkedin}
                       onChange={(e) => setProfileData({ ...profileData, linkedin: e.target.value })}
+                      placeholder="linkedin.com/in/username"
                     />
                   ) : (
-                    <p>{profileData.linkedin}</p>
+                    <p>{profileData.linkedin || "Not set"}</p>
                   )}
                 </div>
               </div>
@@ -297,36 +422,35 @@ function ProfileSettings({ isDark, toggleTheme, setIsLoggedIn, setPage }) {
           <h3>📈 Coding Statistics</h3>
 
           <div className="stat-cards">
-            <div className="stat-box blue">2,850<br /><span>Total Points</span></div>
-            <div className="stat-box green">6<br /><span>Day Streak</span></div>
-            <div className="stat-box purple">42<br /><span>Contests</span></div>
-            <div className="stat-box orange">8<br /><span>Projects</span></div>
+            <div className="stat-box blue">{stats.totalPoints.toLocaleString()}<br /><span>Total Points</span></div>
+            <div className="stat-box green">{stats.currentStreak}<br /><span>Day Streak</span></div>
+            <div className="stat-box purple">{stats.problemsSolved}<br /><span>Problems Solved</span></div>
+            <div className="stat-box orange">{userProjects.length}<br /><span>Projects</span></div>
           </div>
 
           <h4>Skills & Proficiency</h4>
 
-          {[
-            ["Python", 90, "25 problems"],
-            ["JavaScript", 85, "18 problems"],
-            ["Java", 75, "12 problems"],
-            ["React", 88, "8 problems"],
-            ["Data Structures", 80, "35 problems"],
-            ["Algorithms", 72, "28 problems"],
-          ].map(([skill, percent, count]) => (
-            <div className="skill-row" key={skill}>
-              <div className="skill-header">
-                <strong>{skill}</strong>
-                <span>{count}</span>
+          {skills.length > 0 ? (
+            skills.map((skill) => (
+              <div className="skill-row" key={skill.name}>
+                <div className="skill-header">
+                  <strong>{skill.name}</strong>
+                  <span>{skill.problemsSolved} problems</span>
+                </div>
+                <div className="skill-bar">
+                  <div
+                    className="skill-fill"
+                    style={{ width: `${skill.proficiency}%` }}
+                  />
+                </div>
+                <small>{skill.proficiency}% proficiency</small>
               </div>
-              <div className="skill-bar">
-                <div
-                  className="skill-fill"
-                  style={{ width: `${percent}%` }}
-                />
-              </div>
-              <small>{percent}% proficiency</small>
+            ))
+          ) : (
+            <div className="empty-state">
+              <p>No skills tracked yet. Start solving problems to build your skills!</p>
             </div>
-          ))}
+          )}
         </div>
       )}
 
@@ -338,61 +462,78 @@ function ProfileSettings({ isDark, toggleTheme, setIsLoggedIn, setPage }) {
             <p>Click on a category to view your submitted projects</p>
           </div>
 
-          {/* Horizontal Category Buttons */}
-          <div className="category-buttons-row">
-            {Object.entries(projectCategories).map(([category, data]) => (
-              <button
-                key={category}
-                className={`category-btn ${expandedCategory === category ? "active" : ""}`}
-                onClick={() => toggleCategory(category)}
-              >
-                <span className="cat-btn-icon">{data.icon}</span>
-                <span className="cat-btn-name">{category}</span>
-                <span className="cat-btn-count">{data.projects.length}</span>
-              </button>
-            ))}
-          </div>
-
-          {/* Project List - appears below buttons */}
-          {expandedCategory && (
-            <div className="projects-panel">
-              <div className="projects-panel-header">
-                <h4>{projectCategories[expandedCategory].icon} {expandedCategory}</h4>
-                <span className="projects-count">{projectCategories[expandedCategory].projects.length} Project{projectCategories[expandedCategory].projects.length !== 1 ? "s" : ""}</span>
-              </div>
-
-              <div className="project-list">
-                {projectCategories[expandedCategory].projects.map((project, idx) => (
-                  <React.Fragment key={idx}>
-                    <div className="project-item">
-                      <div className="project-info">
-                        <h4 className="project-name">{project.name}</h4>
-                        <span className="project-tech">{project.tech}</span>
-                      </div>
-                      <button
-                        className="details-btn"
-                        onClick={() => setSelectedProject(selectedProject?.name === project.name ? null : project)}
-                      >
-                        {selectedProject?.name === project.name ? "Hide" : "Details"}
-                      </button>
-                    </div>
-
-                    {/* Project Details - appears directly below selected project */}
-                    {selectedProject?.name === project.name && (
-                      <div className="project-details inline-details">
-                        <div className="details-header">
-                          <h4>{selectedProject.name}</h4>
-                          <span className="details-date">{selectedProject.date}</span>
-                        </div>
-                        <div className="details-tech">
-                          <strong>Technologies:</strong> {selectedProject.tech}
-                        </div>
-                        <p className="details-description">{selectedProject.description}</p>
-                      </div>
-                    )}
-                  </React.Fragment>
+          {Object.keys(groupedProjects).length > 0 ? (
+            <>
+              {/* Horizontal Category Buttons */}
+              <div className="category-buttons-row">
+                {Object.entries(groupedProjects).map(([category, data]) => (
+                  <button
+                    key={category}
+                    className={`category-btn ${expandedCategory === category ? "active" : ""}`}
+                    onClick={() => toggleCategory(category)}
+                  >
+                    <span className="cat-btn-icon">{data.icon}</span>
+                    <span className="cat-btn-name">{category}</span>
+                    <span className="cat-btn-count">{data.projects.length}</span>
+                  </button>
                 ))}
               </div>
+
+              {/* Project List - appears below buttons */}
+              {expandedCategory && groupedProjects[expandedCategory] && (
+                <div className="projects-panel">
+                  <div className="projects-panel-header">
+                    <h4>{groupedProjects[expandedCategory].icon} {expandedCategory}</h4>
+                    <span className="projects-count">
+                      {groupedProjects[expandedCategory].projects.length} Project{groupedProjects[expandedCategory].projects.length !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+
+                  <div className="project-list">
+                    {groupedProjects[expandedCategory].projects.map((project, idx) => (
+                      <React.Fragment key={project.id || idx}>
+                        <div className="project-item">
+                          <div className="project-info">
+                            <h4 className="project-name">{project.title}</h4>
+                            <span className="project-tech">{project.language}</span>
+                          </div>
+                          <button
+                            className="details-btn"
+                            onClick={() => setSelectedProject(selectedProject?.id === project.id ? null : project)}
+                          >
+                            {selectedProject?.id === project.id ? "Hide" : "Details"}
+                          </button>
+                        </div>
+
+                        {/* Project Details */}
+                        {selectedProject?.id === project.id && (
+                          <div className="project-details inline-details">
+                            <div className="details-header">
+                              <h4>{project.title}</h4>
+                            </div>
+                            <div className="details-tech">
+                              <strong>Language:</strong> {project.language}
+                            </div>
+                            <p className="details-description">{project.description || "No description"}</p>
+                            {project.github && (
+                              <a href={project.github} target="_blank" rel="noopener noreferrer">
+                                View on GitHub →
+                              </a>
+                            )}
+                          </div>
+                        )}
+                      </React.Fragment>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="empty-state">
+              <p>No projects submitted yet. Upload your first project!</p>
+              <button className="submit-project-btn" onClick={() => setPage("upload")}>
+                ➕ Upload Project
+              </button>
             </div>
           )}
         </div>
@@ -407,45 +548,76 @@ function ProfileSettings({ isDark, toggleTheme, setIsLoggedIn, setPage }) {
           </div>
 
           <div className="badge-grid">
-            {/* Bronze */}
-            <div className="achievement-card earned">
-              <div className="achievement-icon bronze-bg">🏆</div>
-              <h4>Bronze</h4>
-              <p>Solve 10 problems</p>
-              <span className="earned-badge">✓ Earned</span>
-            </div>
+            {badges.length > 0 ? (
+              badges.map((badge) => (
+                <div
+                  key={badge.id}
+                  className={`achievement-card ${badge.isEarned ? "earned" : "locked"}`}
+                >
+                  <div className={`achievement-icon ${getBadgeBgClass(badge.color)}`}>
+                    {getBadgeIcon(badge.name)}
+                  </div>
+                  <h4>{badge.name}</h4>
+                  <p>{badge.description}</p>
+                  {badge.isEarned ? (
+                    <span className="earned-badge">✓ Earned</span>
+                  ) : (
+                    <>
+                      <div className="achievement-progress">
+                        <div
+                          className="achievement-progress-fill"
+                          style={{ width: `${badge.progress}%` }}
+                        />
+                      </div>
+                      <small>{badge.progress}% complete</small>
+                    </>
+                  )}
+                </div>
+              ))
+            ) : (
+              // Default badges when none loaded from API
+              <>
+                <div className="achievement-card locked">
+                  <div className="achievement-icon bronze-bg">🏆</div>
+                  <h4>Bronze</h4>
+                  <p>Solve 10 problems</p>
+                  <div className="achievement-progress">
+                    <div className="achievement-progress-fill" style={{ width: `${(stats.problemsSolved / 10) * 100}%` }} />
+                  </div>
+                  <small>{Math.min(stats.problemsSolved, 10)}/10 problems</small>
+                </div>
 
-            {/* Silver */}
-            <div className="achievement-card earned">
-              <div className="achievement-icon silver-bg">🛡️</div>
-              <h4>Silver</h4>
-              <p>Solve 25 problems</p>
-              <span className="earned-badge">✓ Earned</span>
-            </div>
+                <div className="achievement-card locked">
+                  <div className="achievement-icon silver-bg">�️</div>
+                  <h4>Silver</h4>
+                  <p>Solve 25 problems</p>
+                  <div className="achievement-progress">
+                    <div className="achievement-progress-fill" style={{ width: `${(stats.problemsSolved / 25) * 100}%` }} />
+                  </div>
+                  <small>{Math.min(stats.problemsSolved, 25)}/25 problems</small>
+                </div>
 
-            {/* Gold */}
-            <div className="achievement-card earned">
-              <div className="achievement-icon gold-bg">👑</div>
-              <h4>Gold</h4>
-              <p>Solve 50 problems</p>
-              <span className="earned-badge">✓ Earned</span>
-            </div>
+                <div className="achievement-card locked">
+                  <div className="achievement-icon gold-bg">👑</div>
+                  <h4>Gold</h4>
+                  <p>Solve 50 problems</p>
+                  <div className="achievement-progress">
+                    <div className="achievement-progress-fill" style={{ width: `${(stats.problemsSolved / 50) * 100}%` }} />
+                  </div>
+                  <small>{Math.min(stats.problemsSolved, 50)}/50 problems</small>
+                </div>
 
-            {/* Problem Solver */}
-            <div className="achievement-card earned">
-              <div className="achievement-icon green-bg">◎</div>
-              <h4>Problem Solver</h4>
-              <p>90%+ accuracy rate</p>
-              <span className="earned-badge">✓ Earned</span>
-            </div>
-
-            {/* Code Optimizer */}
-            <div className="achievement-card earned">
-              <div className="achievement-icon blue-bg">{"<>"}</div>
-              <h4>Code Optimizer</h4>
-              <p>Submit optimal solutions</p>
-              <span className="earned-badge">✓ Earned</span>
-            </div>
+                <div className="achievement-card locked">
+                  <div className="achievement-icon green-bg">◎</div>
+                  <h4>Problem Solver</h4>
+                  <p>90%+ accuracy rate</p>
+                  <div className="achievement-progress">
+                    <div className="achievement-progress-fill" style={{ width: `${(stats.accuracy / 90) * 100}%` }} />
+                  </div>
+                  <small>{stats.accuracy}%/90% accuracy</small>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

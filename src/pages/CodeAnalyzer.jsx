@@ -7,6 +7,7 @@ import "prismjs/components/prism-java";
 import "prismjs/components/prism-c";
 import "prismjs/components/prism-cpp";
 import "../App.css";
+import { getCurrentUser } from "../services/api";
 
 function RenderField({ value }) {
   if (Array.isArray(value)) {
@@ -134,13 +135,19 @@ export default function CodeAnalyzer() {
     setError("");
     setAnalysisResult(null);
 
+    const currentUser = getCurrentUser();
+
     try {
       const response = await fetch("http://localhost:4000/api/analyze", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ inputCode }),
+        body: JSON.stringify({
+          inputCode,
+          userId: currentUser?.id,
+          language
+        }),
       });
 
       if (!response.ok) {

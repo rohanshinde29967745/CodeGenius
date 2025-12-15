@@ -7,6 +7,7 @@ import "prismjs/components/prism-java";
 import "prismjs/components/prism-c";
 import "prismjs/components/prism-cpp";
 import "../App.css";
+import { getCurrentUser } from "../services/api";
 
 function ProblemSolving() {
   const [difficulty, setDifficulty] = useState("Easy");
@@ -131,11 +132,14 @@ function ProblemSolving() {
 
     setResult("🔄 Checking solution...");
 
+    const currentUser = getCurrentUser();
+
     try {
       const res = await fetch("http://localhost:4000/api/problem-check", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          userId: currentUser?.id,
           language,
           problem,
           description,

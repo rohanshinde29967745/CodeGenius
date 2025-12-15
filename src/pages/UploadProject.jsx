@@ -1,39 +1,109 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { getProjects, createProject, getCurrentUser } from "../services/api";
 import "../App.css";
 
 function UploadProject() {
   const [showUpload, setShowUpload] = useState(false);
+  const [projects, setProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
 
+  // Filter states
+  const [filterLanguage, setFilterLanguage] = useState("All Languages");
+  const [filterCategory, setFilterCategory] = useState("All Categories");
+  const [sortBy, setSortBy] = useState("Most Recent");
+
+  // Form states
   const [projectTitle, setProjectTitle] = useState("");
   const [description, setDescription] = useState("");
   const [language, setLanguage] = useState("");
   const [category, setCategory] = useState("");
   const [tags, setTags] = useState("");
   const [github, setGithub] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  const projects = [
-    {
-      title: "React Todo App with TypeScript",
-      author: "Sarah Chen",
-      desc: "A full-featured todo app built with React, TypeScript, and local storage persistence.",
-      tags: ["React", "TypeScript", "CSS"],
-      views: 156,
-      likes: 45,
-      days: "2 days ago",
-    },
-    {
-      title: "Python Data Analysis Dashboard",
-      author: "Marcus Rodriguez",
-      desc: "Interactive dashboard for analyzing sales data using Pandas, Matplotlib, and Streamlit.",
-      tags: ["Python", "Pandas", "Matplotlib"],
-      views: 89,
-      likes: 23,
-      days: "1 week ago",
-    },
-  ];
+  // Fetch projects on mount and when filters change
+  useEffect(() => {
+    fetchProjects();
+  }, [filterLanguage, filterCategory, sortBy]);
 
-  const handleSubmit = () => {
-    alert("Project uploaded successfully!");
+  const fetchProjects = async () => {
+    setLoading(true);
+    try {
+      const data = await getProjects({
+        language: filterLanguage,
+        category: filterCategory,
+        sort: sortBy,
+      });
+      setProjects(data.projects || []);
+    } catch (error) {
+      console.error("Failed to fetch projects:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async () => {
+    const currentUser = getCurrentUser();
+    if (!currentUser) {
+      alert("Please log in to upload a project");
+      return;
+    }
+
+    if (!projectTitle.trim()) {
+      alert("Please enter a project title");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const tagArray = tags.split(",").map((t) => t.trim()).filter((t) => t);
+
+      const result = await createProject({
+        userId: currentUser.id,
+        title: projectTitle,
+        description,
+        language,
+        category,
+        github,
+        tags: tagArray,
+      });
+
+      if (result.project) {
+        alert("Project uploaded successfully!");
+        // Reset form
+        setProjectTitle("");
+        setDescription("");
+        setLanguage("");
+        setCategory("");
+        setTags("");
+        setGithub("");
+        setShowUpload(false);
+        // Refresh projects list
+        fetchProjects();
+      } else {
+        alert(result.error || "Failed to upload project");
+      }
+    } catch (error) {
+      console.error("Upload error:", error);
+      alert("Failed to upload project. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Format time ago
+  const formatTimeAgo = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffDays === 0) return "Today";
+    if (diffDays === 1) return "Yesterday";
+    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+    return `${Math.floor(diffDays / 30)} months ago`;
   };
 
   return (
@@ -62,26 +132,41 @@ function UploadProject() {
           <div className="filter-row">
             <div className="dropdown-with-label">
               <label className="dropdown-label">Language</label>
-              <select className="filter-select">
+              <select
+                className="filter-select"
+                value={filterLanguage}
+                onChange={(e) => setFilterLanguage(e.target.value)}
+              >
                 <option>All Languages</option>
                 <option>JavaScript</option>
                 <option>Python</option>
+                <option>Java</option>
                 <option>C++</option>
               </select>
             </div>
 
             <div className="dropdown-with-label">
               <label className="dropdown-label">Category</label>
-              <select className="filter-select">
+              <select
+                className="filter-select"
+                value={filterCategory}
+                onChange={(e) => setFilterCategory(e.target.value)}
+              >
                 <option>All Categories</option>
                 <option>Web Development</option>
                 <option>Data Science</option>
+                <option>Mobile Apps</option>
+                <option>Machine Learning</option>
               </select>
             </div>
 
             <div className="dropdown-with-label">
               <label className="dropdown-label">Sort By</label>
-              <select className="filter-select">
+              <select
+                className="filter-select"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+              >
                 <option>Most Recent</option>
                 <option>Most Popular</option>
               </select>
@@ -89,27 +174,39 @@ function UploadProject() {
           </div>
 
           <div className="project-list">
-            {projects.map((proj, i) => (
-              <div key={i} className="project-card">
-                <h4>{proj.title}</h4>
-                <p className="author">👤 {proj.author}</p>
-                <p className="desc">{proj.desc}</p>
-
-                <div className="tag-row">
-                  {proj.tags.map((t, j) => (
-                    <span key={j} className="tag">
-                      {t}
-                    </span>
-                  ))}
-                </div>
-
-                <div className="stats-row">
-                  <span>👁 {proj.views}</span>
-                  <span>⭐ {proj.likes}</span>
-                  <span>⏱ {proj.days}</span>
-                </div>
+            {loading ? (
+              <div className="project-card">
+                <h4>Loading projects...</h4>
               </div>
-            ))}
+            ) : projects.length > 0 ? (
+              projects.map((proj, i) => (
+                <div key={proj.id || i} className="project-card">
+                  <h4>{proj.title}</h4>
+                  <p className="author">👤 {proj.author}</p>
+                  <p className="desc">{proj.description}</p>
+
+                  <div className="tag-row">
+                    {proj.tags?.map((t, j) => (
+                      <span key={j} className="tag">
+                        {t}
+                      </span>
+                    ))}
+                    {proj.language && <span className="tag">{proj.language}</span>}
+                  </div>
+
+                  <div className="stats-row">
+                    <span>👁 {proj.views || 0}</span>
+                    <span>⭐ {proj.likes || 0}</span>
+                    <span>⏱ {formatTimeAgo(proj.createdAt)}</span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="project-card">
+                <h4>No projects found</h4>
+                <p className="desc">Be the first to upload a project!</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -141,7 +238,7 @@ function UploadProject() {
               value={language}
               onChange={(e) => setLanguage(e.target.value)}
             >
-              <option>Select language</option>
+              <option value="">Select language</option>
               <option>JavaScript</option>
               <option>Python</option>
               <option>Java</option>
@@ -154,7 +251,7 @@ function UploadProject() {
               value={category}
               onChange={(e) => setCategory(e.target.value)}
             >
-              <option>Select category</option>
+              <option value="">Select category</option>
               <option>Web Development</option>
               <option>Data Science</option>
               <option>Mobile Apps</option>
@@ -177,11 +274,12 @@ function UploadProject() {
               onChange={(e) => setGithub(e.target.value)}
             />
 
-            <label>Upload Files</label>
-            <input type="file" className="file-input" />
-
-            <button className="submit-project-btn" onClick={handleSubmit}>
-              🚀 Publish Project
+            <button
+              className="submit-project-btn"
+              onClick={handleSubmit}
+              disabled={submitting}
+            >
+              {submitting ? "Uploading..." : "🚀 Publish Project"}
             </button>
           </div>
         )}

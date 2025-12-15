@@ -1,8 +1,19 @@
 import React, { useState, useEffect, useRef } from "react";
+import { getAdminStats, getAdminActivity, getPopularProblems } from "../services/api";
 import "../App.css";
 
 function AdminDashboard({ onLogout, isDark, toggleTheme }) {
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    dailySubmissions: 0,
+    activeProblems: 0,
+    totalProjects: 0,
+    growth: { users: 0, submissions: 0 },
+  });
+  const [activities, setActivities] = useState([]);
+  const [popularProblems, setPopularProblems] = useState([]);
+  const [loading, setLoading] = useState(true);
   const settingsRef = useRef(null);
 
   // Close dropdown when clicking outside
@@ -16,6 +27,29 @@ function AdminDashboard({ onLogout, isDark, toggleTheme }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Fetch admin data
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [statsData, activityData, problemsData] = await Promise.all([
+          getAdminStats(),
+          getAdminActivity(5),
+          getPopularProblems(3),
+        ]);
+
+        setStats(statsData);
+        setActivities(activityData.activities || []);
+        setPopularProblems(problemsData.problems || []);
+      } catch (error) {
+        console.error("Failed to fetch admin data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
@@ -23,8 +57,33 @@ function AdminDashboard({ onLogout, isDark, toggleTheme }) {
   };
 
   const handleExportData = () => {
-    // Placeholder for export functionality
     alert("Exporting data...");
+  };
+
+  // Format time ago
+  const formatTimeAgo = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+
+    if (diffMins < 60) return `${diffMins} minutes ago`;
+    if (diffHours < 24) return `${diffHours} hours ago`;
+    return `${Math.floor(diffMs / 86400000)} days ago`;
+  };
+
+  // Get activity icon
+  const getActivityIcon = (type) => {
+    const icons = {
+      registration: "📧",
+      login: "🔵",
+      problem_solved: "🧩",
+      project_uploaded: "📦",
+      badge_earned: "🏅",
+    };
+    return icons[type] || "🔵";
   };
 
   return (
@@ -40,8 +99,8 @@ function AdminDashboard({ onLogout, isDark, toggleTheme }) {
           <div className="admin-profile">
             <div className="admin-avatar">👤</div>
             <div className="admin-info">
-              <strong>Alex Chen</strong>
-              <span>Gold Level</span>
+              <strong>Admin</strong>
+              <span>Administrator</span>
             </div>
           </div>
         </div>
@@ -108,112 +167,100 @@ function AdminDashboard({ onLogout, isDark, toggleTheme }) {
         </div>
       </div>
 
-      <div className="admin-stats-row">
-        <div className="admin-stat-card">
-          <h3>Total Users</h3>
-          <h1>15,847</h1>
-          <p className="green">+12.5% from last month</p>
+      {loading ? (
+        <div className="admin-stats-row">
+          <div className="admin-stat-card">Loading...</div>
         </div>
-
-        <div className="admin-stat-card">
-          <h3>Daily Submissions</h3>
-          <h1>3,264</h1>
-          <p className="green">+5% from yesterday</p>
-        </div>
-
-        <div className="admin-stat-card">
-          <h3>Active Problems</h3>
-          <h1>542</h1>
-          <p className="green">+8 problems this week</p>
-        </div>
-
-        <div className="admin-stat-card">
-          <h3>Project Uploads</h3>
-          <h1>1,089</h1>
-          <p className="green">+23 uploads today</p>
-        </div>
-      </div>
-
-      <div className="admin-two-col">
-
-        {/* RECENT ACTIVITY */}
-        <div className="admin-left">
-          <h3 className="section-title">🔵 Recent Activity</h3>
-          <p className="section-sub">Latest platform events and user actions</p>
-
-          <div className="activity-item">
-            <div className="activity-left">
-              <span className="icon blue">📧</span>
-              <span>New user registration: sarah.dev@email.com</span>
+      ) : (
+        <>
+          <div className="admin-stats-row">
+            <div className="admin-stat-card">
+              <h3>Total Users</h3>
+              <h1>{stats.totalUsers.toLocaleString()}</h1>
+              <p className={stats.growth?.users >= 0 ? "green" : "red"}>
+                {stats.growth?.users >= 0 ? "+" : ""}{stats.growth?.users}% from yesterday
+              </p>
             </div>
-            <span className="time">2 minutes ago</span>
+
+            <div className="admin-stat-card">
+              <h3>Daily Submissions</h3>
+              <h1>{stats.dailySubmissions.toLocaleString()}</h1>
+              <p className={stats.growth?.submissions >= 0 ? "green" : "red"}>
+                {stats.growth?.submissions >= 0 ? "+" : ""}{stats.growth?.submissions}% from yesterday
+              </p>
+            </div>
+
+            <div className="admin-stat-card">
+              <h3>Active Problems</h3>
+              <h1>{stats.activeProblems}</h1>
+              <p className="green">Available challenges</p>
+            </div>
+
+            <div className="admin-stat-card">
+              <h3>Project Uploads</h3>
+              <h1>{stats.totalProjects.toLocaleString()}</h1>
+              <p className="green">Total projects</p>
+            </div>
           </div>
 
-          <div className="activity-item">
-            <div className="activity-left">
-              <span className="icon green">🧩</span>
-              <span>Problem "Binary Tree Traversal" was solved 15 times</span>
+          <div className="admin-two-col">
+
+            {/* RECENT ACTIVITY */}
+            <div className="admin-left">
+              <h3 className="section-title">🔵 Recent Activity</h3>
+              <p className="section-sub">Latest platform events and user actions</p>
+
+              {activities.length > 0 ? (
+                activities.map((activity) => (
+                  <div className="activity-item" key={activity.id}>
+                    <div className="activity-left">
+                      <span className="icon blue">{getActivityIcon(activity.type)}</span>
+                      <span>{activity.description || `${activity.userName}: ${activity.type.replace(/_/g, " ")}`}</span>
+                    </div>
+                    <span className="time">{formatTimeAgo(activity.time)}</span>
+                  </div>
+                ))
+              ) : (
+                <div className="activity-item">
+                  <div className="activity-left">
+                    <span className="icon blue">📊</span>
+                    <span>No recent activity</span>
+                  </div>
+                </div>
+              )}
             </div>
-            <span className="time">5 minutes ago</span>
+
+            {/* POPULAR PROBLEMS */}
+            <div className="admin-right">
+              <h3 className="section-title">🔥 Most Popular Problems</h3>
+              <p className="section-sub">Problems with highest engagement</p>
+
+              {popularProblems.length > 0 ? (
+                popularProblems.map((problem) => (
+                  <div className="pop-problem" key={problem.id}>
+                    <div className="pop-header">
+                      <strong>{problem.title}</strong>
+                      <span>{problem.attempts} attempts</span>
+                    </div>
+                    <div className="pop-bar">
+                      <div className="pop-fill" style={{ width: `${problem.successRate}%` }} />
+                    </div>
+                    <small>Success Rate: {problem.successRate}%</small>
+                  </div>
+                ))
+              ) : (
+                <div className="pop-problem">
+                  <div className="pop-header">
+                    <strong>No problems yet</strong>
+                  </div>
+                  <p>Generate problems to see statistics</p>
+                </div>
+              )}
+            </div>
+
           </div>
-
-          <div className="activity-item">
-            <div className="activity-left">
-              <span className="icon purple">📦</span>
-              <span>Project uploaded: "React Todo App"</span>
-            </div>
-            <span className="time">12 minutes ago</span>
-          </div>
-
-          <div className="activity-item">
-            <div className="activity-left">
-              <span className="icon orange">🏅</span>
-              <span>3 users earned "Problem Solver" badge</span>
-            </div>
-            <span className="time">1 hour ago</span>
-          </div>
-        </div>
-
-        {/* POPULAR PROBLEMS */}
-        <div className="admin-right">
-          <h3 className="section-title">🔥 Most Popular Problems</h3>
-          <p className="section-sub">Problems with highest engagement</p>
-
-          <div className="pop-problem">
-            <div className="pop-header">
-              <strong>Two Sum</strong>
-              <span>1547 attempts</span>
-            </div>
-            <div className="pop-bar">
-              <div className="pop-fill" style={{ width: "76%" }} />
-            </div>
-            <small>Success Rate: 76%</small>
-          </div>
-
-          <div className="pop-problem">
-            <div className="pop-header">
-              <strong>Valid Parentheses</strong>
-              <span>1234 attempts</span>
-            </div>
-            <div className="pop-bar">
-              <div className="pop-fill" style={{ width: "85%" }} />
-            </div>
-            <small>Success Rate: 85%</small>
-          </div>
-
-          <div className="pop-problem">
-            <div className="pop-header">
-              <strong>Binary Search</strong>
-              <span>987 attempts</span>
-            </div>
-            <div className="pop-bar">
-              <div className="pop-fill" style={{ width: "92%" }} />
-            </div>
-            <small>Success Rate: 92%</small>
-          </div>
-        </div>
-
-      </div>
+        </>
+      )}
     </div>
   );
 }

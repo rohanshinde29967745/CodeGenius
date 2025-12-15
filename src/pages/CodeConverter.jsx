@@ -7,6 +7,7 @@ import "prismjs/components/prism-java";
 import "prismjs/components/prism-c";
 import "prismjs/components/prism-cpp";
 import "../App.css";
+import { getCurrentUser } from "../services/api";
 
 function CodeConverter() {
   const [inputLang, setInputLang] = useState("Python");
@@ -106,6 +107,8 @@ function CodeConverter() {
     setLoading(true);
     setConvertedCode("🔄 Converting using Gemini Flash 2.5...");
 
+    const currentUser = getCurrentUser();
+
     try {
       const response = await fetch("http://localhost:4000/api/convert", {
         method: "POST",
@@ -114,6 +117,7 @@ function CodeConverter() {
           inputLang,
           outputLang,
           inputCode,
+          userId: currentUser?.id,
         }),
       });
 
