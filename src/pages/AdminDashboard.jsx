@@ -56,8 +56,51 @@ function AdminDashboard({ onLogout, isDark, toggleTheme }) {
     if (onLogout) onLogout();
   };
 
-  const handleExportData = () => {
-    alert("Exporting data...");
+  const handleExportData = async () => {
+    try {
+      const response = await fetch("http://localhost:4000/api/admin/export");
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert("Failed to export data");
+        return;
+      }
+
+      let csv = "=== CODEGENIUS PLATFORM EXPORT ===\n\n";
+
+      csv += "--- USERS ---\n";
+      csv += "ID,Name,Email,Role,Level,Points,Problems Solved,Created At\n";
+      data.users.forEach(u => {
+        csv += `${u.id},"${u.fullName}",${u.email},${u.role},${u.level},${u.points},${u.problemsSolved},${u.createdAt}\n`;
+      });
+
+      csv += "\n--- RECENT SUBMISSIONS ---\n";
+      csv += "ID,User,Problem,Status,Points,Submitted At\n";
+      data.submissions.forEach(s => {
+        csv += `${s.id},"${s.userName}","${s.problemTitle}",${s.status},${s.points},${s.submittedAt}\n`;
+      });
+
+      csv += "\n--- RECENT ACTIVITY ---\n";
+      csv += "ID,User,Type,Description,Time\n";
+      data.activities.forEach(a => {
+        csv += `${a.id},"${a.userName}",${a.type},"${a.description}",${a.time}\n`;
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `codegenius_export_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      alert("✅ Data exported successfully!");
+    } catch (error) {
+      console.error("Export error:", error);
+      alert("❌ Failed to export data");
+    }
   };
 
   // Format time ago
@@ -94,12 +137,10 @@ function AdminDashboard({ onLogout, isDark, toggleTheme }) {
 
         {/* RIGHT SIDE */}
         <div className="admin-topbar-right" style={{ marginLeft: 'auto' }}>
-          <button className="admin-notification">🔔</button>
-
           <div className="admin-profile">
             <div className="admin-avatar">👤</div>
             <div className="admin-info">
-              <strong>Admin</strong>
+              <strong>{JSON.parse(localStorage.getItem('user'))?.fullName || 'Admin'}</strong>
               <span>Administrator</span>
             </div>
           </div>

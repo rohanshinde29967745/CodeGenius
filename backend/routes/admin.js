@@ -147,4 +147,69 @@ function calculateGrowth(today, yesterday) {
     return Math.round(((today - yesterday) / yesterday) * 100);
 }
 
+// ========================
+// EXPORT ALL DATA
+// ========================
+router.get("/export", async (req, res) => {
+    try {
+        // Get all users
+        const usersResult = await query(
+            `SELECT id, full_name, email, role, current_level, total_points, problems_solved, created_at
+             FROM users ORDER BY id`
+        );
+
+        // Get recent submissions
+        const submissionsResult = await query(
+            `SELECT s.id, u.full_name as user_name, p.title as problem_title, 
+                    s.status, s.points_earned, s.submitted_at
+             FROM submissions s
+             LEFT JOIN users u ON s.user_id = u.id
+             LEFT JOIN problems p ON s.problem_id = p.id
+             ORDER BY s.submitted_at DESC
+             LIMIT 100`
+        );
+
+        // Get recent activity
+        const activityResult = await query(
+            `SELECT al.id, u.full_name as user_name, al.activity_type, 
+                    al.description, al.created_at
+             FROM activity_logs al
+             LEFT JOIN users u ON al.user_id = u.id
+             ORDER BY al.created_at DESC
+             LIMIT 100`
+        );
+
+        res.json({
+            users: usersResult.rows.map(row => ({
+                id: row.id,
+                fullName: row.full_name,
+                email: row.email,
+                role: row.role,
+                level: row.current_level,
+                points: row.total_points,
+                problemsSolved: row.problems_solved,
+                createdAt: row.created_at
+            })),
+            submissions: submissionsResult.rows.map(row => ({
+                id: row.id,
+                userName: row.user_name || 'Unknown',
+                problemTitle: row.problem_title || 'Unknown',
+                status: row.status,
+                points: row.points_earned,
+                submittedAt: row.submitted_at
+            })),
+            activities: activityResult.rows.map(row => ({
+                id: row.id,
+                userName: row.user_name || 'Unknown',
+                type: row.activity_type,
+                description: row.description,
+                time: row.created_at
+            }))
+        });
+    } catch (error) {
+        console.error("Export error:", error);
+        res.status(500).json({ error: "Failed to export data" });
+    }
+});
+
 export default router;

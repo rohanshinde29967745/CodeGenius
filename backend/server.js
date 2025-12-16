@@ -21,6 +21,7 @@ import usersRoute from "./routes/users.js";
 import leaderboardRoute from "./routes/leaderboard.js";
 import adminRoute from "./routes/admin.js";
 import projectsRoute from "./routes/projects.js";
+import reportsRoute from "./routes/reports.js";
 
 dotenv.config();
 
@@ -58,6 +59,9 @@ app.use("/api/problem-generate", problemGenerateRoute);
 
 // NEW — AI Problem Checker
 app.use("/api/problem-check", problemCheckRoute);
+
+// Reports (Bug/Feature reporting)
+app.use("/api/reports", reportsRoute);
 
 // --------------------
 // Database Health Check

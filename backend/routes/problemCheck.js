@@ -154,6 +154,49 @@ NO extra text outside JSON.
           ]
         );
 
+        // 4. Update Streak (only for correct solutions)
+        if (aiResult.correct) {
+          // Get user's last submission date
+          const userResult = await query(
+            `SELECT last_submission_date, current_streak, longest_streak FROM users WHERE id = $1`,
+            [userId]
+          );
+
+          if (userResult.rows.length > 0) {
+            const user = userResult.rows[0];
+            const lastDate = user.last_submission_date ? new Date(user.last_submission_date) : null;
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            let newStreak = user.current_streak || 0;
+
+            if (lastDate) {
+              lastDate.setHours(0, 0, 0, 0);
+              const diffDays = Math.floor((today - lastDate) / (1000 * 60 * 60 * 24));
+
+              if (diffDays === 0) {
+                // Same day - streak stays same (already counted)
+              } else if (diffDays === 1) {
+                // Consecutive day - increment streak!
+                newStreak = newStreak + 1;
+              } else {
+                // Streak broken - reset to 1
+                newStreak = 1;
+              }
+            } else {
+              // First submission ever
+              newStreak = 1;
+            }
+
+            const newLongest = Math.max(newStreak, user.longest_streak || 0);
+
+            await query(
+              `UPDATE users SET current_streak = $1, longest_streak = $2, last_submission_date = CURRENT_DATE WHERE id = $3`,
+              [newStreak, newLongest, userId]
+            );
+          }
+        }
+
         statsUpdated = true;
 
       } catch (dbError) {

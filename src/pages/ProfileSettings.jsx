@@ -136,13 +136,27 @@ function ProfileSettings({ isDark, toggleTheme, setIsLoggedIn, setPage }) {
     }
   };
 
-  // Handle profile photo change
-  const handlePhotoChange = (e) => {
+  // Handle profile photo change - auto-saves to database
+  const handlePhotoChange = async (e) => {
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setProfilePhoto(reader.result);
+      reader.onloadend = async () => {
+        const base64Photo = reader.result;
+        setProfilePhoto(base64Photo);
+
+        // Auto-save photo to database
+        const currentUser = getCurrentUser();
+        if (currentUser) {
+          try {
+            await updateUserProfile(currentUser.id, {
+              profilePhoto: base64Photo
+            });
+            console.log("Profile photo saved successfully");
+          } catch (error) {
+            console.error("Failed to save profile photo:", error);
+          }
+        }
       };
       reader.readAsDataURL(file);
     }

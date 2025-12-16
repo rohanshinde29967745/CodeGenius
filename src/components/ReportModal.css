@@ -1,0 +1,265 @@
+/* Report Modal Styles */
+
+.report-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  backdrop-filter: blur(4px);
+}
+
+.report-modal {
+  background: white;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 500px;
+  padding: 28px;
+  position: relative;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: modalSlideIn 0.3s ease;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.report-modal-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: none;
+  border: none;
+  font-size: 28px;
+  cursor: pointer;
+  color: #999;
+  transition: color 0.2s;
+}
+
+.report-modal-close:hover {
+  color: #333;
+}
+
+.report-modal-title {
+  font-size: 1.5rem;
+  margin: 0 0 4px 0;
+  color: #333;
+}
+
+.report-modal-subtitle {
+  color: #888;
+  margin: 0 0 20px 0;
+}
+
+.report-type-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.report-type-option {
+  border: 2px solid #e0e0e0;
+  border-radius: 10px;
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+}
+
+.report-type-option:hover {
+  border-color: #7c3aed;
+  background: #f9f5ff;
+}
+
+.report-type-option.selected {
+  border-color: #7c3aed;
+  background: #f3e8ff;
+}
+
+.report-type-option input {
+  display: none;
+}
+
+.type-label {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #333;
+}
+
+.type-desc {
+  font-size: 0.75rem;
+  color: #888;
+  margin-top: 4px;
+}
+
+.report-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+  font-weight: 500;
+  color: #555;
+}
+
+.report-input {
+  padding: 12px 14px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+
+.report-input:focus {
+  outline: none;
+  border-color: #7c3aed;
+}
+
+.report-textarea {
+  padding: 12px 14px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 1rem;
+  resize: vertical;
+  min-height: 100px;
+  font-family: inherit;
+  transition: border-color 0.2s;
+}
+
+.report-textarea:focus {
+  outline: none;
+  border-color: #7c3aed;
+}
+
+.report-submit {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, #7c3aed, #5b21b6);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.report-submit:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(124, 58, 237, 0.4);
+}
+
+.report-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.report-error {
+  background: #fee2e2;
+  color: #b91c1c;
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 0.9rem;
+}
+
+.report-success {
+  text-align: center;
+  padding: 30px 20px;
+}
+
+.success-icon {
+  font-size: 3rem;
+  display: block;
+  margin-bottom: 16px;
+}
+
+.report-success h3 {
+  margin: 0 0 8px 0;
+  color: #059669;
+}
+
+.report-success p {
+  color: #666;
+  margin: 0;
+}
+
+/* Floating Report Button */
+.floating-report-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: linear-gradient(135deg, #7c3aed, #5b21b6);
+  color: white;
+  border: none;
+  border-radius: 50px;
+  padding: 14px 20px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(124, 58, 237, 0.4);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 9999;
+  transition: all 0.3s ease;
+}
+
+.floating-report-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 30px rgba(124, 58, 237, 0.5);
+}
+
+.floating-report-btn span {
+  font-size: 1.2rem;
+}
+
+/* Dark mode support */
+.dark .report-modal {
+  background: #1e1e2e;
+}
+
+.dark .report-modal-title {
+  color: #fff;
+}
+
+.dark .report-modal-subtitle {
+  color: #aaa;
+}
+
+.dark .report-type-option {
+  border-color: #444;
+}
+
+.dark .report-type-option:hover,
+.dark .report-type-option.selected {
+  background: #2a2a3e;
+}
+
+.dark .type-label {
+  color: #fff;
+}
+
+.dark .report-input,
+.dark .report-textarea {
+  background: #2a2a3e;
+  border-color: #444;
+  color: #fff;
+}
+
+.dark .report-label {
+  color: #ccc;
+}

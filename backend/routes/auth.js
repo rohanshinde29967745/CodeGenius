@@ -12,7 +12,10 @@ const JWT_SECRET = process.env.JWT_SECRET || "codegenius-secret-key-2024";
 // ========================
 router.post("/register", async (req, res) => {
     try {
-        const { fullName, email, password, role = "User" } = req.body;
+        const { fullName, email, password } = req.body;
+
+        // SECURITY: Force role to 'User' - Admin accounts can only be created manually in database
+        const role = "User";
 
         // Validation
         if (!fullName || !email || !password) {

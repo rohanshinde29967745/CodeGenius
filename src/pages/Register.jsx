@@ -10,7 +10,6 @@ export default function Register({ setPage }) {
     const [email, setEmail] = useState("");
     const [pass, setPass] = useState("");
     const [confirmPass, setConfirmPass] = useState("");
-    const [role, setRole] = useState("User");
     const [showPass, setShowPass] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
@@ -40,7 +39,6 @@ export default function Register({ setPage }) {
                     fullName: name.trim(),
                     email: email,
                     password: pass,
-                    role: role,
                 }),
             });
 
@@ -122,19 +120,6 @@ export default function Register({ setPage }) {
                     onChange={(e) => setConfirmPass(e.target.value)}
                     required
                 />
-
-                <label className="lg-label">Role</label>
-                <div className="lg-select-wrap">
-                    <select
-                        className="lg-select"
-                        value={role}
-                        onChange={(e) => setRole(e.target.value)}
-                        aria-label="Select role"
-                    >
-                        <option value="User">User</option>
-                        <option value="Admin">Admin</option>
-                    </select>
-                </div>
 
                 <button className="lg-submit" type="submit" disabled={loading}>
                     {loading ? "Creating account..." : "Create Account"}
