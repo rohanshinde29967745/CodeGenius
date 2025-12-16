@@ -14,7 +14,7 @@ const pool = new Pool({
     password: process.env.DB_PASSWORD,
     max: 20, // Maximum number of connections
     idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 2000,
+    connectionTimeoutMillis: 10000,
 });
 
 // Test the connection
