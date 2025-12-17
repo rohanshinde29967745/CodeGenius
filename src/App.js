@@ -11,6 +11,7 @@ import UploadProject from "./pages/UploadProject";
 import ProfileSettings from "./pages/ProfileSettings";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminReports from "./pages/AdminReports";
+import OAuthCallback from "./pages/OAuthCallback";
 import Sidebar from "./components/Sidebar";
 import ReportModal from "./components/ReportModal";
 import "./login.css";
@@ -30,6 +31,12 @@ function App() {
 
   // Restore login session from localStorage on page load
   useEffect(() => {
+    // Check if this is an OAuth callback
+    if (window.location.pathname === "/oauth/callback") {
+      setPage("oauth-callback");
+      return;
+    }
+
     const token = localStorage.getItem("token");
     const user = localStorage.getItem("user");
 
@@ -90,6 +97,11 @@ function App() {
       {/* 2.5️⃣ REGISTER PAGE */}
       {page === "register" && !isLoggedIn && (
         <Register setPage={setPage} />
+      )}
+
+      {/* 2.6️⃣ OAUTH CALLBACK PAGE */}
+      {page === "oauth-callback" && (
+        <OAuthCallback setIsLoggedIn={setIsLoggedIn} setUserRole={setUserRole} setPage={setPage} />
       )}
 
       {/* 3️⃣ AFTER LOGIN → Show Dashboard + Sidebar */}
