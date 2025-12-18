@@ -179,11 +179,7 @@ export default function Login({ setPage, setIsLoggedIn, setUserRole }) {
             className="social-btn social-google"
             title="Sign in with Google"
             onClick={() => {
-              // Google OAuth URL - Replace YOUR_GOOGLE_CLIENT_ID with your actual Google Client ID
-              const googleClientId = "YOUR_GOOGLE_CLIENT_ID";
-              const redirectUri = encodeURIComponent(window.location.origin + "/auth/google/callback");
-              const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${googleClientId}&redirect_uri=${redirectUri}&response_type=code&scope=openid%20email%20profile`;
-              window.location.href = googleAuthUrl;
+              window.location.href = "http://localhost:4000/api/oauth/google";
             }}
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="22" height="22">
@@ -200,11 +196,7 @@ export default function Login({ setPage, setIsLoggedIn, setUserRole }) {
             className="social-btn social-github"
             title="Sign in with GitHub"
             onClick={() => {
-              // GitHub OAuth URL - Replace YOUR_GITHUB_CLIENT_ID with your actual GitHub Client ID
-              const githubClientId = "YOUR_GITHUB_CLIENT_ID";
-              const redirectUri = encodeURIComponent(window.location.origin + "/auth/github/callback");
-              const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${githubClientId}&redirect_uri=${redirectUri}&scope=user:email`;
-              window.location.href = githubAuthUrl;
+              window.location.href = "http://localhost:4000/api/oauth/github";
             }}
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
@@ -212,18 +204,13 @@ export default function Login({ setPage, setIsLoggedIn, setUserRole }) {
             </svg>
           </button>
 
-          {/* Facebook Sign In */}
+          {/* Facebook Sign In - Coming Soon */}
           <button
             type="button"
             className="social-btn social-facebook"
-            title="Sign in with Facebook"
-            onClick={() => {
-              // Facebook OAuth URL - Replace YOUR_FACEBOOK_APP_ID with your actual Facebook App ID
-              const facebookAppId = "YOUR_FACEBOOK_APP_ID";
-              const redirectUri = encodeURIComponent(window.location.origin + "/auth/facebook/callback");
-              const facebookAuthUrl = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${facebookAppId}&redirect_uri=${redirectUri}&scope=email,public_profile`;
-              window.location.href = facebookAuthUrl;
-            }}
+            title="Coming Soon"
+            disabled
+            style={{ opacity: 0.5, cursor: 'not-allowed' }}
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
               <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />

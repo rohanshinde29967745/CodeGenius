@@ -22,6 +22,7 @@ import leaderboardRoute from "./routes/leaderboard.js";
 import adminRoute from "./routes/admin.js";
 import projectsRoute from "./routes/projects.js";
 import reportsRoute from "./routes/reports.js";
+import oauthRoute from "./routes/oauth.js";
 
 dotenv.config();
 
@@ -62,6 +63,9 @@ app.use("/api/problem-check", problemCheckRoute);
 
 // Reports (Bug/Feature reporting)
 app.use("/api/reports", reportsRoute);
+
+// OAuth (Google, GitHub login)
+app.use("/api/oauth", oauthRoute);
 
 // --------------------
 // Database Health Check
