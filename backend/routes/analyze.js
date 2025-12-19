@@ -12,36 +12,41 @@ router.post("/", async (req, res) => {
   }
 
   try {
-    // STRICT JSON PROMPT (no invalid symbols)
+    // Count actual code lines for context
+    const codeLines = inputCode.split('\n').filter(line => line.trim()).length;
+
+    // STRICT JSON PROMPT with Mermaid flowchart
     const prompt = `
 You are an advanced AI Code Analyzer. Analyze the code below and RETURN ONLY VALID JSON.
 
 The JSON structure must be EXACTLY:
 
 {
-  "explanation": ["step 1", "step 2"],
+  "explanation": [
+    { "line": 1, "code": "actual code line", "explanation": "what this line does" }
+  ],
   "errors": [
-    { "line": 0, "severity": "low", "message": "error message" }
+    { "line": 1, "severity": "low|medium|high", "title": "Error Title", "message": "description", "fix": "suggested fix code" }
   ],
   "complexity": {
     "time": "O(n)",
     "space": "O(1)",
-    "notes": "optional notes"
+    "explanation": "Brief explanation of why this complexity"
   },
-  "flowchart": ["step 1", "step 2"],
+  "flowchart": "Mermaid flowchart syntax starting with graph TD",
   "optimized": "full optimized code as multiline string"
 }
 
-RULES:
-- DO NOT include markdown.
-- DO NOT include comments.
-- DO NOT add extra text before or after JSON.
-- explanation & flowchart must be arrays.
-- errors must be an array of objects.
-- optimized must be a string (can include newlines).
-- If unknown, use: "", [], null
+CRITICAL RULES:
+- explanation array must have EXACTLY ${codeLines} items - one per actual non-empty line of code
+- For each explanation item, include the actual code line text and its explanation
+- flowchart must be valid Mermaid syntax (graph TD\\n  A[Start] --> B[Step]...)
+- errors: if no errors found, return empty array []
+- If code has no issues, return empty errors array
+- DO NOT include markdown backticks
+- DO NOT include comments or extra text
 
-Analyze this code:
+Analyze this ${language} code:
 ${inputCode}
 `;
 
@@ -98,20 +103,22 @@ ${inputCode}
 
     // Normalize values for frontend safety
     const out = {
+      // Keep explanation as array (may be objects with line/code/explanation or strings)
       explanation: Array.isArray(parsed.explanation)
         ? parsed.explanation
-        : String(parsed.explanation || "").split("\n"),
+        : [],
 
       errors: Array.isArray(parsed.errors) ? parsed.errors : [],
 
       complexity:
         parsed.complexity && typeof parsed.complexity === "object"
           ? parsed.complexity
-          : { time: "", space: "", notes: "" },
+          : { time: "", space: "", explanation: "" },
 
-      flowchart: Array.isArray(parsed.flowchart)
+      // Flowchart is now a Mermaid string
+      flowchart: typeof parsed.flowchart === "string"
         ? parsed.flowchart
-        : String(parsed.flowchart || "").split("\n"),
+        : (Array.isArray(parsed.flowchart) ? parsed.flowchart.join("\n") : ""),
 
       optimized: typeof parsed.optimized === "string" ? parsed.optimized : "",
     };

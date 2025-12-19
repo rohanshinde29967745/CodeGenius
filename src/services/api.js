@@ -120,10 +120,22 @@ export const getUserProjects = async (userId) => {
 };
 
 export const createProject = async (projectData) => {
+    const token = localStorage.getItem("token");
+    const isFormData = projectData instanceof FormData;
+
+    const headers = {};
+    if (token) {
+        headers.Authorization = `Bearer ${token}`;
+    }
+    // Don't set Content-Type for FormData - browser will set it with boundary
+    if (!isFormData) {
+        headers["Content-Type"] = "application/json";
+    }
+
     const response = await fetch(`${API_BASE}/projects`, {
         method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify(projectData),
+        headers,
+        body: isFormData ? projectData : JSON.stringify(projectData),
     });
     return response.json();
 };

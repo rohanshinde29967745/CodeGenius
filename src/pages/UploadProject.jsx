@@ -15,7 +15,7 @@ function UploadProject() {
   // Form states
   const [projectTitle, setProjectTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [language, setLanguage] = useState("");
+  const [projectFile, setProjectFile] = useState(null);
   const [category, setCategory] = useState("");
   const [tags, setTags] = useState("");
   const [github, setGithub] = useState("");
@@ -58,22 +58,26 @@ function UploadProject() {
     try {
       const tagArray = tags.split(",").map((t) => t.trim()).filter((t) => t);
 
-      const result = await createProject({
-        userId: currentUser.id,
-        title: projectTitle,
-        description,
-        language,
-        category,
-        github,
-        tags: tagArray,
-      });
+      // Build FormData for file upload
+      const formData = new FormData();
+      formData.append("userId", currentUser.id);
+      formData.append("title", projectTitle);
+      formData.append("description", description);
+      formData.append("category", category);
+      formData.append("github", github);
+      formData.append("tags", JSON.stringify(tagArray));
+      if (projectFile) {
+        formData.append("projectFile", projectFile);
+      }
+
+      const result = await createProject(formData);
 
       if (result.project) {
         alert("Project uploaded successfully!");
         // Reset form
         setProjectTitle("");
         setDescription("");
-        setLanguage("");
+        setProjectFile(null);
         setCategory("");
         setTags("");
         setGithub("");
@@ -181,7 +185,15 @@ function UploadProject() {
             ) : projects.length > 0 ? (
               projects.map((proj, i) => (
                 <div key={proj.id || i} className="project-card">
-                  <h4>{proj.title}</h4>
+                  <h4>
+                    {proj.github ? (
+                      <a href={proj.github} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>
+                        {proj.title} 🔗
+                      </a>
+                    ) : (
+                      proj.title
+                    )}
+                  </h4>
                   <p className="author">👤 {proj.author}</p>
                   <p className="desc">{proj.description}</p>
 
@@ -191,13 +203,38 @@ function UploadProject() {
                         {t}
                       </span>
                     ))}
-                    {proj.language && <span className="tag">{proj.language}</span>}
+                    {proj.category && <span className="tag">{proj.category}</span>}
                   </div>
 
                   <div className="stats-row">
                     <span>👁 {proj.views || 0}</span>
                     <span>⭐ {proj.likes || 0}</span>
                     <span>⏱ {formatTimeAgo(proj.createdAt)}</span>
+                  </div>
+
+                  {/* Action buttons */}
+                  <div className="project-actions" style={{ marginTop: '10px', display: 'flex', gap: '10px' }}>
+                    {proj.github && (
+                      <a
+                        href={proj.github}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="action-btn"
+                        style={{ padding: '6px 12px', background: '#333', color: '#fff', borderRadius: '6px', textDecoration: 'none', fontSize: '0.85rem' }}
+                      >
+                        🐙 GitHub
+                      </a>
+                    )}
+                    {proj.filesUrl && (
+                      <a
+                        href={`http://localhost:4000${proj.filesUrl}`}
+                        download
+                        className="action-btn"
+                        style={{ padding: '6px 12px', background: '#0066ff', color: '#fff', borderRadius: '6px', textDecoration: 'none', fontSize: '0.85rem' }}
+                      >
+                        📥 Download ZIP
+                      </a>
+                    )}
                   </div>
                 </div>
               ))
@@ -232,18 +269,15 @@ function UploadProject() {
               onChange={(e) => setDescription(e.target.value)}
             />
 
-            <label>Programming Language</label>
-            <select
+            <label>Upload Project (ZIP file)</label>
+            <input
+              type="file"
               className="input-field"
-              value={language}
-              onChange={(e) => setLanguage(e.target.value)}
-            >
-              <option value="">Select language</option>
-              <option>JavaScript</option>
-              <option>Python</option>
-              <option>Java</option>
-              <option>C++</option>
-            </select>
+              accept=".zip"
+              onChange={(e) => setProjectFile(e.target.files[0])}
+              style={{ padding: '10px' }}
+            />
+            {projectFile && <p style={{ margin: '5px 0', color: '#0066ff' }}>📎 {projectFile.name}</p>}
 
             <label>Category</label>
             <select

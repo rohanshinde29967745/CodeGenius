@@ -1,7 +1,37 @@
 import express from "express";
 import { query } from "../config/db.js";
+import multer from "multer";
+import path from "path";
+import { fileURLToPath } from "url";
+
+// ES Module dirname workaround
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const router = express.Router();
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, path.join(__dirname, "../uploads/projects"));
+    },
+    filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+        cb(null, uniqueSuffix + "-" + file.originalname);
+    },
+});
+
+const upload = multer({
+    storage,
+    limits: { fileSize: 50 * 1024 * 1024 }, // 50MB max
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype === "application/zip" || file.mimetype === "application/x-zip-compressed") {
+            cb(null, true);
+        } else {
+            cb(new Error("Only ZIP files are allowed"), false);
+        }
+    },
+});
 
 // ========================
 // GET ALL PROJECTS
@@ -13,7 +43,7 @@ router.get("/", async (req, res) => {
 
         let sql = `
       SELECT p.id, p.title, p.description, p.programming_language, p.category,
-             p.github_url, p.views_count, p.likes_count, p.created_at,
+             p.github_url, p.files_url, p.views_count, p.likes_count, p.created_at,
              u.full_name as author_name
       FROM projects p
       JOIN users u ON p.user_id = u.id
@@ -62,6 +92,7 @@ router.get("/", async (req, res) => {
                     language: project.programming_language,
                     category: project.category,
                     github: project.github_url,
+                    filesUrl: project.files_url,
                     views: project.views_count,
                     likes: project.likes_count,
                     author: project.author_name,
@@ -116,20 +147,33 @@ router.get("/user/:userId", async (req, res) => {
 // ========================
 // CREATE PROJECT
 // ========================
-router.post("/", async (req, res) => {
+router.post("/", upload.single("projectFile"), async (req, res) => {
     try {
-        const { userId, title, description, language, category, github, tags } = req.body;
+        const { userId, title, description, category, github } = req.body;
+
+        // Parse tags from string if sent via FormData
+        let tags = [];
+        if (req.body.tags) {
+            try {
+                tags = JSON.parse(req.body.tags);
+            } catch {
+                tags = req.body.tags.split(",").map(t => t.trim()).filter(t => t);
+            }
+        }
 
         if (!userId || !title) {
             return res.status(400).json({ error: "User ID and title are required" });
         }
 
+        // Get file path if uploaded
+        const filesUrl = req.file ? `/uploads/projects/${req.file.filename}` : null;
+
         // Insert project
         const result = await query(
-            `INSERT INTO projects (user_id, title, description, programming_language, category, github_url, created_at)
+            `INSERT INTO projects (user_id, title, description, category, github_url, files_url, created_at)
        VALUES ($1, $2, $3, $4, $5, $6, NOW())
-       RETURNING id, title, description, programming_language, category`,
-            [userId, title, description, language, category, github]
+       RETURNING id, title, description, category, files_url`,
+            [userId, title, description, category, github, filesUrl]
         );
 
         const project = result.rows[0];

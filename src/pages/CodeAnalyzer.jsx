@@ -9,41 +9,270 @@ import "prismjs/components/prism-cpp";
 import "../App.css";
 import { getCurrentUser } from "../services/api";
 
-function RenderField({ value }) {
-  if (Array.isArray(value)) {
-    if (value.length === 0) return <div className="empty-note">— Nothing to show —</div>;
-    return (
-      <ol style={{ paddingLeft: 18 }}>
-        {value.map((item, i) => (
-          <li key={i} style={{ marginBottom: 8, whiteSpace: "pre-wrap" }}>
-            {typeof item === "object" ? JSON.stringify(item, null, 2) : String(item)}
-          </li>
-        ))}
-      </ol>
-    );
+// Styled Explanation Component - Line by line explanation
+function ExplanationRenderer({ value }) {
+  if (!value || (Array.isArray(value) && value.length === 0)) {
+    return <div className="empty-note">— Nothing to show —</div>;
   }
 
-  if (value && typeof value === "object") {
+  // If it's an array of explanation items
+  if (Array.isArray(value)) {
     return (
-      <div style={{ whiteSpace: "pre-wrap", fontFamily: "ui-monospace, monospace" }}>
-        {Object.entries(value).map(([k, v]) => (
-          <div key={k} style={{ marginBottom: 8 }}>
-            <strong>{k}:</strong>{" "}
-            {typeof v === "object" ? JSON.stringify(v, null, 2) : String(v)}
+      <div className="explanation-container">
+        {value.map((item, i) => (
+          <div key={i} className="explanation-line-card">
+            <span className="line-badge">Line {i + 1}</span>
+            <div className="line-code-block">
+              <code>{typeof item === "object" ? item.code || item.line || JSON.stringify(item) : String(item)}</code>
+            </div>
+            {item.explanation && (
+              <p className="line-explanation">{item.explanation}</p>
+            )}
           </div>
         ))}
       </div>
     );
   }
 
-  if (!value || String(value).trim() === "")
+  // If it's a string, parse it into lines
+  const lines = String(value).split("\n").filter(l => l.trim());
+  return (
+    <div className="explanation-container">
+      {lines.map((line, i) => (
+        <div key={i} className="explanation-line-card">
+          <span className="line-badge">Line {i + 1}</span>
+          <p className="line-explanation">{line}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Styled Errors Component - With severity badges
+function ErrorsRenderer({ value }) {
+  if (!value || (Array.isArray(value) && value.length === 0) ||
+    (typeof value === "string" && (value.includes("No errors") || value.includes("no errors")))) {
+    return (
+      <div className="no-errors-container">
+        <span className="no-errors-icon">✅</span>
+        <p>No errors or issues detected in your code!</p>
+      </div>
+    );
+  }
+
+  // If it's an array of error objects
+  if (Array.isArray(value)) {
+    return (
+      <div className="errors-container">
+        {value.map((error, i) => (
+          <div key={i} className="error-card">
+            <div className="error-header">
+              <span className="error-icon">⚠️</span>
+              <span className="error-line-badge">Line {error.line || i + 1}</span>
+              <span className={`severity-badge ${error.severity || "medium"}`}>
+                {error.severity || "medium"}
+              </span>
+            </div>
+            <h4 className="error-title">{error.title || error.type || "Potential Issue"}</h4>
+            <p className="error-description">{error.description || error.message || String(error)}</p>
+            {error.fix && (
+              <div className="error-fix-box">
+                <code>✓ {error.fix}</code>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // If it's a string, display as single error
+  return (
+    <div className="errors-container">
+      <div className="error-card">
+        <div className="error-header">
+          <span className="error-icon">⚠️</span>
+          <span className="severity-badge medium">info</span>
+        </div>
+        <p className="error-description">{String(value)}</p>
+      </div>
+    </div>
+  );
+}
+
+// Styled Complexity Component - Time and Space cards
+function ComplexityRenderer({ value }) {
+  if (!value) {
     return <div className="empty-note">— Nothing to show —</div>;
+  }
+
+  // Parse complexity data
+  let timeComplexity = "N/A";
+  let spaceComplexity = "N/A";
+  let explanation = "";
+
+  if (typeof value === "object") {
+    timeComplexity = value.time || value.timeComplexity || value.Time || "N/A";
+    spaceComplexity = value.space || value.spaceComplexity || value.Space || "N/A";
+    explanation = value.explanation || value.description || "";
+  } else if (typeof value === "string") {
+    // Try to parse from string
+    const timeMatch = value.match(/time[:\s]*O\([^)]+\)/i);
+    const spaceMatch = value.match(/space[:\s]*O\([^)]+\)/i);
+    if (timeMatch) timeComplexity = timeMatch[0].replace(/time[:\s]*/i, "");
+    if (spaceMatch) spaceComplexity = spaceMatch[0].replace(/space[:\s]*/i, "");
+    explanation = value;
+  }
 
   return (
-    <div style={{ whiteSpace: "pre-wrap", fontFamily: "ui-monospace, monospace" }}>
-      {String(value).split("\n").map((line, i) => (
-        <div key={i} style={{ marginBottom: 6 }}>{line}</div>
-      ))}
+    <div className="complexity-container">
+      <div className="complexity-card time">
+        <div className="complexity-icon">
+          <span>⏱️</span>
+        </div>
+        <div className="complexity-content">
+          <h4>Time Complexity</h4>
+          <span className="complexity-value">{timeComplexity}</span>
+        </div>
+      </div>
+
+      <div className="complexity-card space">
+        <div className="complexity-icon">
+          <span>📊</span>
+        </div>
+        <div className="complexity-content">
+          <h4>Space Complexity</h4>
+          <span className="complexity-value">{spaceComplexity}</span>
+        </div>
+      </div>
+
+      {explanation && (
+        <div className="complexity-explanation">
+          <p>{explanation}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Styled Flowchart Component - Renders Mermaid diagrams
+function FlowchartRenderer({ value }) {
+  const containerRef = useRef(null);
+  const [rendered, setRendered] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (!value || !containerRef.current) return;
+
+    const renderDiagram = async () => {
+      try {
+        // Dynamic import of mermaid
+        const mermaid = (await import('mermaid')).default;
+        mermaid.initialize({
+          startOnLoad: false,
+          theme: document.body.classList.contains('dark-theme') ? 'dark' : 'default',
+          flowchart: {
+            useMaxWidth: true,
+            htmlLabels: true,
+            curve: 'basis'
+          }
+        });
+
+        // Clean up the Mermaid code
+        let mermaidCode = typeof value === "string" ? value : String(value);
+
+        // Remove markdown code blocks if present
+        mermaidCode = mermaidCode.replace(/```mermaid\n?/g, '').replace(/```\n?/g, '');
+
+        // Ensure it starts with a valid graph declaration
+        if (!mermaidCode.trim().startsWith('graph') && !mermaidCode.trim().startsWith('flowchart')) {
+          mermaidCode = 'graph TD\n' + mermaidCode;
+        }
+
+        // Clear previous content
+        containerRef.current.innerHTML = '';
+
+        // Render the diagram
+        const { svg } = await mermaid.render('flowchart-' + Date.now(), mermaidCode);
+        containerRef.current.innerHTML = svg;
+        setRendered(true);
+        setError(null);
+      } catch (err) {
+        console.error('Mermaid render error:', err);
+        setError('Could not render flowchart diagram');
+        // Fallback to showing raw code
+        if (containerRef.current) {
+          containerRef.current.innerHTML = `<pre class="flowchart-fallback">${typeof value === "string" ? value : JSON.stringify(value, null, 2)}</pre>`;
+        }
+      }
+    };
+
+    renderDiagram();
+  }, [value]);
+
+  if (!value) {
+    return <div className="empty-note">— Nothing to show —</div>;
+  }
+
+  return (
+    <div className="flowchart-container">
+      {error && <div className="flowchart-error">{error}</div>}
+      <div
+        ref={containerRef}
+        className="flowchart-content mermaid-diagram"
+      >
+        <div className="loading-message">Loading flowchart...</div>
+      </div>
+    </div>
+  );
+}
+
+// Styled Optimized Code Component
+function OptimizedRenderer({ value }) {
+  if (!value) {
+    return <div className="empty-note">— Nothing to show —</div>;
+  }
+
+  let code = "";
+  let improvements = [];
+
+  if (typeof value === "object") {
+    code = value.code || value.optimizedCode || JSON.stringify(value, null, 2);
+    improvements = value.improvements || value.changes || [];
+  } else {
+    code = String(value);
+  }
+
+  return (
+    <div className="optimized-container">
+      <div className="optimized-header">
+        <span className="optimized-icon">💡</span>
+        <h4>Optimized Code</h4>
+      </div>
+
+      <div className="optimized-code-block">
+        <pre><code>{code}</code></pre>
+      </div>
+
+      {improvements.length > 0 && (
+        <div className="improvements-banner">
+          <span className="improvements-icon">✅</span>
+          <div className="improvements-content">
+            <strong>Improvements Applied:</strong>
+            <p>{improvements.join(", ")}</p>
+          </div>
+        </div>
+      )}
+
+      {typeof value === "string" && value.toLowerCase().includes("better") && (
+        <div className="improvements-banner">
+          <span className="improvements-icon">✅</span>
+          <div className="improvements-content">
+            <strong>Improvements Applied:</strong>
+            <p>Better variable names, overflow prevention, added documentation</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -60,7 +289,14 @@ export default function CodeAnalyzer() {
   const cameraInputRef = useRef(null);
   const inputHighlightRef = useRef(null);
 
-  const tabs = ["explanation", "errors", "complexity", "flowchart", "optimized"];
+  // Tab configuration with icons matching reference design
+  const tabConfig = [
+    { key: "explanation", label: "Explain", icon: "💡" },
+    { key: "errors", label: "Errors", icon: "⚠️" },
+    { key: "complexity", label: "Complexity", icon: "⚡" },
+    { key: "flowchart", label: "Flow", icon: "📊" },
+    { key: "optimized", label: "Optimize", icon: "📈" },
+  ];
 
   // Language icons mapping
   const langIcons = {
@@ -290,19 +526,22 @@ export default function CodeAnalyzer() {
           </button>
         </div>
 
-        {/* RIGHT CARD */}
-        <div className="analyzer-card">
-          <h3 className="card-title">Analysis Results</h3>
-          <p className="card-sub">AI-powered insights about your code</p>
+        {/* RIGHT CARD - ANALYSIS RESULTS */}
+        <div className="analyzer-card analyzer-results-card">
+          <div className="analysis-header">
+            <span className="analysis-header-icon">✨</span>
+            <h3>AI Analysis Results</h3>
+          </div>
 
-          <div className="tab-bar">
-            {tabs.map((t) => (
+          <div className="analysis-tab-bar">
+            {tabConfig.map((tab) => (
               <button
-                key={t}
-                className={`tab-btn ${activeTab === t ? "active" : ""}`}
-                onClick={() => setActiveTab(t)}
+                key={tab.key}
+                className={`analysis-tab-btn ${activeTab === tab.key ? "active" : ""}`}
+                onClick={() => setActiveTab(tab.key)}
               >
-                {t.charAt(0).toUpperCase() + t.slice(1)}
+                <span className="tab-icon">{tab.icon}</span>
+                {tab.label}
               </button>
             ))}
           </div>
@@ -314,7 +553,13 @@ export default function CodeAnalyzer() {
               <div className="empty-note">Paste your code and click "Analyze Code" to see results</div>
             )}
             {!loading && !error && analysisResult && (
-              <RenderField value={getTabContent()} />
+              <>
+                {activeTab === "explanation" && <ExplanationRenderer value={analysisResult.explanation} />}
+                {activeTab === "errors" && <ErrorsRenderer value={analysisResult.errors} />}
+                {activeTab === "complexity" && <ComplexityRenderer value={analysisResult.complexity} />}
+                {activeTab === "flowchart" && <FlowchartRenderer value={analysisResult.flowchart} />}
+                {activeTab === "optimized" && <OptimizedRenderer value={analysisResult.optimized} />}
+              </>
             )}
           </div>
         </div>
