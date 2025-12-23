@@ -21,17 +21,49 @@ const storage = multer.diskStorage({
     },
 });
 
+// Allowed file types for project uploads
+const allowedMimeTypes = [
+    "application/zip",
+    "application/x-zip-compressed",
+    "application/x-rar-compressed",
+    "application/x-7z-compressed",
+    "application/x-tar",
+    "application/gzip",
+    "application/octet-stream" // For some ZIP files
+];
+
 const upload = multer({
     storage,
-    limits: { fileSize: 50 * 1024 * 1024 }, // 50MB max
+    limits: { fileSize: 200 * 1024 * 1024 }, // 200MB max
     fileFilter: (req, file, cb) => {
-        if (file.mimetype === "application/zip" || file.mimetype === "application/x-zip-compressed") {
+        // Check if it's an allowed archive type or has archive extension
+        const ext = path.extname(file.originalname).toLowerCase();
+        const isAllowedExt = ['.zip', '.rar', '.7z', '.tar', '.gz', '.tgz'].includes(ext);
+        const isAllowedMime = allowedMimeTypes.includes(file.mimetype);
+
+        if (isAllowedExt || isAllowedMime) {
             cb(null, true);
         } else {
-            cb(new Error("Only ZIP files are allowed"), false);
+            cb(new Error("Only archive files (ZIP, RAR, 7z, TAR) are allowed"), false);
         }
     },
 });
+
+// Multer error handling middleware
+const handleMulterError = (err, req, res, next) => {
+    if (err instanceof multer.MulterError) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+            return res.status(400).json({
+                error: "File too large. Maximum size is 200MB.",
+                details: "Please compress your project or upload a smaller file."
+            });
+        }
+        return res.status(400).json({ error: err.message });
+    } else if (err) {
+        return res.status(400).json({ error: err.message });
+    }
+    next();
+};
 
 // ========================
 // GET ALL PROJECTS
@@ -42,7 +74,7 @@ router.get("/", async (req, res) => {
         const limit = parseInt(req.query.limit) || 20;
 
         let sql = `
-      SELECT p.id, p.title, p.description, p.programming_language, p.category,
+      SELECT p.id, p.user_id, p.title, p.description, p.programming_language, p.category,
              p.github_url, p.files_url, p.views_count, p.likes_count, p.created_at,
              u.full_name as author_name
       FROM projects p
@@ -87,6 +119,7 @@ router.get("/", async (req, res) => {
                 );
                 return {
                     id: project.id,
+                    userId: project.user_id,
                     title: project.title,
                     description: project.description,
                     language: project.programming_language,
@@ -147,9 +180,10 @@ router.get("/user/:userId", async (req, res) => {
 // ========================
 // CREATE PROJECT
 // ========================
-router.post("/", upload.single("projectFile"), async (req, res) => {
+router.post("/", upload.single("projectFile"), handleMulterError, async (req, res) => {
     try {
-        const { userId, title, description, category, github } = req.body;
+        const { userId, title, description, github } = req.body;
+        let { category } = req.body;
 
         // Parse tags from string if sent via FormData
         let tags = [];
@@ -165,15 +199,24 @@ router.post("/", upload.single("projectFile"), async (req, res) => {
             return res.status(400).json({ error: "User ID and title are required" });
         }
 
+        // Validate category - must be one of allowed values or null
+        const allowedCategories = ['Web Development', 'Data Science', 'Mobile Apps', 'Machine Learning', 'Other'];
+        if (category && !allowedCategories.includes(category)) {
+            category = 'Other'; // Default to 'Other' if invalid
+        }
+        if (!category || category === '') {
+            category = null; // Allow null for no category
+        }
+
         // Get file path if uploaded
         const filesUrl = req.file ? `/uploads/projects/${req.file.filename}` : null;
 
         // Insert project
         const result = await query(
-            `INSERT INTO projects (user_id, title, description, category, github_url, files_url, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, NOW())
+            `INSERT INTO projects (user_id, title, description, category, github_url, files_url, is_published, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, TRUE, NOW())
        RETURNING id, title, description, category, files_url`,
-            [userId, title, description, category, github, filesUrl]
+            [userId, title, description || '', category, github || null, filesUrl]
         );
 
         const project = result.rows[0];
@@ -216,13 +259,13 @@ router.post("/", upload.single("projectFile"), async (req, res) => {
                 id: project.id,
                 title: project.title,
                 description: project.description,
-                language: project.programming_language,
                 category: project.category,
             },
         });
     } catch (error) {
         console.error("Project create error:", error);
-        res.status(500).json({ error: "Failed to create project" });
+        console.error("Error details:", error.message);
+        res.status(500).json({ error: "Failed to create project", details: error.message });
     }
 });
 

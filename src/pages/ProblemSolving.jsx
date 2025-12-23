@@ -8,6 +8,7 @@ import "prismjs/components/prism-c";
 import "prismjs/components/prism-cpp";
 import "../App.css";
 import { getCurrentUser } from "../services/api";
+import { copyWithToast, checkLanguageMismatch } from "../utils/codeUtils";
 
 function ProblemSolving() {
   const [difficulty, setDifficulty] = useState("Easy");
@@ -20,6 +21,7 @@ function ProblemSolving() {
   const [constraints, setConstraints] = useState([]);
   const [solution, setSolution] = useState("");
   const [result, setResult] = useState("");
+  const [languageMismatch, setLanguageMismatch] = useState(null);
 
   // Test results state (no attempts tracking)
   const [showAIFeedback, setShowAIFeedback] = useState(false);
@@ -49,6 +51,16 @@ function ProblemSolving() {
   // Re-highlight when code changes
   useEffect(() => {
     Prism.highlightAll();
+  }, [solution, language]);
+
+  // Check for language mismatch
+  useEffect(() => {
+    if (solution.trim().length > 30) {
+      const mismatchResult = checkLanguageMismatch(solution, language);
+      setLanguageMismatch(mismatchResult.mismatch ? mismatchResult : null);
+    } else {
+      setLanguageMismatch(null);
+    }
   }, [solution, language]);
 
   // Generate line numbers
@@ -261,8 +273,8 @@ function ProblemSolving() {
     <div className="dashboard-container">
 
       {/* HEADER */}
-      <h1 className="welcome-text">Problem Solving</h1>
-      <p className="sub-text">Practice AI-generated coding challenges.</p>
+      <h1 className="welcome-text page-title-left">Problem Solving</h1>
+      <p className="sub-text page-subtitle">Practice AI-generated coding challenges.</p>
 
       <div className="ps-topbar">
 
@@ -358,6 +370,23 @@ function ProblemSolving() {
             </div>
           </div>
 
+          {/* Language Mismatch Warning */}
+          {languageMismatch && (
+            <div className="language-mismatch-warning">
+              <span className="warning-icon">⚠️</span>
+              <span className="warning-text">
+                It looks like you're writing <span className="warning-highlight">{languageMismatch.detected}</span> code,
+                but <span className="warning-highlight">{languageMismatch.selected}</span> is selected.
+              </span>
+              <button
+                className="fix-btn"
+                onClick={() => setLanguage(languageMismatch.detected)}
+              >
+                Switch to {languageMismatch.detected}
+              </button>
+            </div>
+          )}
+
           {/* VS CODE EDITOR */}
           <div className="vscode-editor ps-vscode-editor">
             <div className="vscode-line-numbers">
@@ -386,8 +415,21 @@ function ProblemSolving() {
             </div>
           </div>
 
-          {/* Button Row - Submit Only */}
+          {/* Button Row */}
           <div className="ps-button-row">
+            <button
+              className="ps-clear-btn"
+              onClick={() => {
+                setSolution("");
+                setResult("");
+                setShowAIFeedback(false);
+                setAiFeedback(null);
+                setLanguageMismatch(null);
+              }}
+              disabled={!solution}
+            >
+              🗑️ Clear Code
+            </button>
             <button
               className="ps-submit-btn"
               onClick={checkSolution}

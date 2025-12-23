@@ -188,3 +188,48 @@ export const getProfile = async (userId) => {
     });
     return response.json();
 };
+
+// ========================
+// COLLABORATION APIs
+// ========================
+
+export const sendCollaborationRequest = async (data) => {
+    const response = await fetch(`${API_BASE}/collaborations`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(data),
+    });
+    return response.json();
+};
+
+export const getReceivedCollaborations = async (userId) => {
+    const response = await fetch(`${API_BASE}/collaborations/received/${userId}`, {
+        headers: getAuthHeaders(),
+    });
+    return response.json();
+};
+
+export const getSentCollaborations = async (userId) => {
+    const response = await fetch(`${API_BASE}/collaborations/sent/${userId}`, {
+        headers: getAuthHeaders(),
+    });
+    return response.json();
+};
+
+export const acceptCollaboration = async (requestId, userId) => {
+    const response = await fetch(`${API_BASE}/collaborations/${requestId}/accept`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ userId }),
+    });
+    return response.json();
+};
+
+export const ignoreCollaboration = async (requestId, userId) => {
+    const response = await fetch(`${API_BASE}/collaborations/${requestId}/ignore`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ userId }),
+    });
+    return response.json();
+};

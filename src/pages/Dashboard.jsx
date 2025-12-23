@@ -88,8 +88,8 @@ function Dashboard({ setPage }) {
 
   return (
     <div className="dashboard-container">
-      <h1 className="welcome-text">Welcome back, {user.fullName?.split(" ")[0] || "User"}! 👋</h1>
-      <p className="sub-text">
+      <h1 className="welcome-text page-title-left">Welcome back, {user.fullName?.split(" ")[0] || "User"}! 👋</h1>
+      <p className="sub-text page-subtitle">
         Here's what's happening with your coding journey today.
       </p>
 
