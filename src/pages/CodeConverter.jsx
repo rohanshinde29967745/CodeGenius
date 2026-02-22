@@ -8,6 +8,7 @@ import "prismjs/components/prism-c";
 import "prismjs/components/prism-cpp";
 import "../App.css";
 import { getCurrentUser } from "../services/api";
+import { copyWithToast, checkLanguageMismatch, detectLanguage } from "../utils/codeUtils";
 
 function CodeConverter() {
   const [inputLang, setInputLang] = useState("Python");
@@ -15,6 +16,7 @@ function CodeConverter() {
   const [inputCode, setInputCode] = useState("");
   const [convertedCode, setConvertedCode] = useState("");
   const [loading, setLoading] = useState(false);
+  const [languageMismatch, setLanguageMismatch] = useState(null);
   const inputHighlightRef = useRef(null);
 
   // Language icons mapping
@@ -32,6 +34,16 @@ function CodeConverter() {
     "C++": "cpp",
     Java: "java",
   };
+
+  // Check for language mismatch when code changes
+  useEffect(() => {
+    if (inputCode.trim().length > 30) {
+      const mismatchResult = checkLanguageMismatch(inputCode, inputLang);
+      setLanguageMismatch(mismatchResult.mismatch ? mismatchResult : null);
+    } else {
+      setLanguageMismatch(null);
+    }
+  }, [inputCode, inputLang]);
 
   // Highlight code using Prism
   const highlightCode = (code, language) => {
@@ -63,11 +75,9 @@ function CodeConverter() {
     setOutputLang(tempLang);
   };
 
-  // Copy to clipboard
+  // Copy to clipboard with toast
   const handleCopy = (text) => {
-    if (text) {
-      navigator.clipboard.writeText(text);
-    }
+    copyWithToast(text);
   };
 
   // Download code
@@ -139,8 +149,8 @@ function CodeConverter() {
   return (
     <div className="dashboard-container converter-page">
       {/* PAGE TITLE */}
-      <h1 className="welcome-text">Code Converter</h1>
-      <p className="sub-text">Convert code between programming languages using AI.</p>
+      <h1 className="welcome-text page-title-left">Code Converter</h1>
+      <p className="sub-text page-subtitle">Convert code between programming languages using AI.</p>
 
       {/* LANGUAGE SELECTORS ROW */}
       <div className="converter-lang-row" style={{ marginTop: '24px' }}>
@@ -200,6 +210,24 @@ function CodeConverter() {
               <span className="btn-text">Copy</span>
             </button>
           </div>
+
+          {/* Language Mismatch Warning */}
+          {languageMismatch && (
+            <div className="language-mismatch-warning">
+              <span className="warning-icon">⚠️</span>
+              <span className="warning-text">
+                It looks like you're writing <span className="warning-highlight">{languageMismatch.detected}</span> code,
+                but <span className="warning-highlight">{languageMismatch.selected}</span> is selected.
+              </span>
+              <button
+                className="fix-btn"
+                onClick={() => setInputLang(languageMismatch.detected)}
+              >
+                Switch to {languageMismatch.detected}
+              </button>
+            </div>
+          )}
+
           <div className="vscode-editor">
             <div className="vscode-line-numbers">
               <pre>{getLineNumbers(inputCode)}</pre>
@@ -277,6 +305,17 @@ function CodeConverter() {
 
       {/* CONVERT BUTTON */}
       <div className="converter-btn-wrapper">
+        <button
+          className="converter-clear-btn"
+          onClick={() => {
+            setInputCode("");
+            setConvertedCode("");
+            setLanguageMismatch(null);
+          }}
+          disabled={!inputCode && !convertedCode}
+        >
+          🗑️ Clear All
+        </button>
         <button
           className="converter-main-btn"
           onClick={handleConvert}

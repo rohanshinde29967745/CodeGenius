@@ -11,8 +11,40 @@ function ProfileSettings({ isDark, toggleTheme, setIsLoggedIn, setPage }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  // Settings dropdown states
+  const [showSettingsMenu, setShowSettingsMenu] = useState(false);
+  const [activeSettingsSection, setActiveSettingsSection] = useState(null); // 'personalization', 'privacy', or null
+  const [language, setLanguage] = useState("English");
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: ""
+  });
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordSuccess, setPasswordSuccess] = useState("");
+
+  // NEW: 5 Recommended Settings
+  const [editorTheme, setEditorTheme] = useState("Monokai");
+  const [fontSize, setFontSize] = useState("14px");
+  const [defaultLanguage, setDefaultLanguage] = useState("JavaScript");
+  const [explanationLevel, setExplanationLevel] = useState("Intermediate");
+  const [profileVisibility, setProfileVisibility] = useState("Public");
+
+  // Editor Preferences
+  const [lineNumbers, setLineNumbers] = useState(true);
+  const [wordWrap, setWordWrap] = useState(false);
+  const [tabSize, setTabSize] = useState("4");
+  const [autoSave, setAutoSave] = useState(true);
+  const [autoComplete, setAutoComplete] = useState(true);
+
+  // Profile/Account Section
+  const [githubConnected, setGithubConnected] = useState(false);
+  const [googleConnected, setGoogleConnected] = useState(true);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
   // Ref for file input
   const fileInputRef = useRef(null);
+  const settingsMenuRef = useRef(null);
 
   // Personal Info State
   const [profileData, setProfileData] = useState({
@@ -105,6 +137,63 @@ function ProfileSettings({ isDark, toggleTheme, setIsLoggedIn, setPage }) {
 
     fetchUserData();
   }, []);
+
+  // Handle click outside to close settings menu
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (settingsMenuRef.current && !settingsMenuRef.current.contains(event.target)) {
+        setShowSettingsMenu(false);
+        setActiveSettingsSection(null);
+      }
+    };
+
+    if (showSettingsMenu) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showSettingsMenu]);
+
+  // Handle password change
+  const handlePasswordChange = async () => {
+    setPasswordError("");
+    setPasswordSuccess("");
+
+    if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
+      setPasswordError("Please fill in all fields");
+      return;
+    }
+
+    if (passwordData.newPassword.length < 6) {
+      setPasswordError("New password must be at least 6 characters");
+      return;
+    }
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      setPasswordError("New passwords do not match");
+      return;
+    }
+
+    try {
+      const currentUser = getCurrentUser();
+      if (!currentUser) return;
+
+      // TODO: Add actual API call to change password
+      // For now, just simulate success
+      setPasswordSuccess("Password changed successfully!");
+      setPasswordData({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: ""
+      });
+      setTimeout(() => {
+        setPasswordSuccess("");
+      }, 3000);
+    } catch (error) {
+      setPasswordError("Failed to change password. Please try again.");
+    }
+  };
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -228,7 +317,626 @@ function ProfileSettings({ isDark, toggleTheme, setIsLoggedIn, setPage }) {
 
   return (
     <div className="dashboard-container profile-settings-page">
-      <h1 className="welcome-text">Profile Settings</h1>
+      {/* Header with Settings Gear */}
+      <div className="profile-header-row">
+        {/* Left side - Title */}
+        <h1 className="welcome-text">Profile Settings</h1>
+
+        {/* Right side - Settings Gear */}
+        <div className="settings-gear-container" ref={settingsMenuRef}>
+          <button
+            className="settings-gear-btn"
+            onClick={() => {
+              setShowSettingsMenu(!showSettingsMenu);
+              if (showSettingsMenu) setActiveSettingsSection(null);
+            }}
+            title="Settings"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+            <span>Settings</span>
+          </button>
+
+          {/* Settings Dropdown Menu - Meta Style */}
+          {showSettingsMenu && (
+            <div className="meta-settings-dropdown">
+              {/* Header */}
+              <div className="meta-settings-header">
+                <button
+                  className="meta-close-btn"
+                  onClick={() => {
+                    setShowSettingsMenu(false);
+                    setActiveSettingsSection(null);
+                  }}
+                >
+                  ✕
+                </button>
+                <span className="meta-header-title">
+                  {activeSettingsSection === 'personalization' ? 'Personalization' :
+                    activeSettingsSection === 'privacy' ? 'Privacy & Security' :
+                      activeSettingsSection === 'editor' ? 'Editor Preferences' :
+                        activeSettingsSection === 'notifications' ? 'Notifications' :
+                          activeSettingsSection === 'account' ? 'Account' :
+                            'Settings'}
+                </span>
+                <div className="meta-header-spacer"></div>
+              </div>
+
+              {/* Main Menu */}
+              {!activeSettingsSection && (
+                <>
+                  {/* Profile Card */}
+                  <div
+                    className="meta-profile-card"
+                    onClick={() => setActiveSettingsSection('account')}
+                  >
+                    <div className="meta-profile-avatar">
+                      {profilePhoto ? (
+                        <img src={profilePhoto} alt="Profile" />
+                      ) : (
+                        <span>{profileData.fullName?.charAt(0) || 'U'}</span>
+                      )}
+                    </div>
+                    <div className="meta-profile-info">
+                      <span className="meta-profile-name">{profileData.fullName || 'User'}</span>
+                      <span className="meta-profile-email">{profileData.email}</span>
+                    </div>
+                    <span className="meta-arrow">›</span>
+                  </div>
+
+                  {/* Settings Group */}
+                  <div className="meta-settings-group">
+                    <div
+                      className="meta-settings-item"
+                      onClick={() => setActiveSettingsSection('personalization')}
+                    >
+                      <span className="meta-item-text">Personalization</span>
+                      <span className="meta-arrow">›</span>
+                    </div>
+
+                    <div
+                      className="meta-settings-item"
+                      onClick={() => setActiveSettingsSection('privacy')}
+                    >
+                      <span className="meta-item-text">Privacy & Security</span>
+                      <span className="meta-arrow">›</span>
+                    </div>
+
+                    <div
+                      className="meta-settings-item"
+                      onClick={() => setActiveSettingsSection('editor')}
+                    >
+                      <span className="meta-item-text">Editor Preferences</span>
+                      <span className="meta-arrow">›</span>
+                    </div>
+
+                    <div
+                      className="meta-settings-item"
+                      onClick={() => setActiveSettingsSection('notifications')}
+                    >
+                      <span className="meta-item-text">Notifications</span>
+                      <span className="meta-arrow">›</span>
+                    </div>
+                  </div>
+
+                  {/* Account Group */}
+                  <div className="meta-settings-group">
+                    <div
+                      className="meta-settings-item logout-item"
+                      onClick={handleLogout}
+                    >
+                      <span className="meta-item-text">Logout</span>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Personalization Section */}
+              {activeSettingsSection === 'personalization' && (
+                <>
+                  <div
+                    className="meta-back-btn"
+                    onClick={() => setActiveSettingsSection(null)}
+                  >
+                    <span className="meta-back-arrow">‹</span>
+                    <span>Back</span>
+                  </div>
+
+                  <div className="meta-settings-group">
+                    <div className="meta-settings-item-row">
+                      <div className="meta-item-left">
+                        <span className="meta-item-text">Dark Mode</span>
+                      </div>
+                      <button
+                        className={`toggle-switch ${isDark ? "active" : ""}`}
+                        onClick={toggleTheme}
+                      >
+                        <span className="toggle-slider" />
+                      </button>
+                    </div>
+
+                    <div className="meta-settings-item-row">
+                      <div className="meta-item-left">
+                        <span className="meta-item-text">Language</span>
+                      </div>
+                      <select
+                        className="meta-select"
+                        value={language}
+                        onChange={(e) => setLanguage(e.target.value)}
+                      >
+                        <option value="English">English</option>
+                        <option value="Marathi">मराठी</option>
+                        <option value="Hindi">हिंदी</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="meta-section-label">Code Editor</div>
+
+                  <div className="meta-settings-group">
+                    <div className="meta-settings-item-row">
+                      <div className="meta-item-left">
+                        <span className="meta-item-text">Theme</span>
+                      </div>
+                      <select
+                        className="meta-select"
+                        value={editorTheme}
+                        onChange={(e) => setEditorTheme(e.target.value)}
+                      >
+                        <option value="Monokai">Monokai</option>
+                        <option value="Dracula">Dracula</option>
+                        <option value="One Dark">One Dark</option>
+                        <option value="GitHub Light">GitHub Light</option>
+                        <option value="Solarized">Solarized</option>
+                      </select>
+                    </div>
+
+                    <div className="meta-settings-item-row">
+                      <div className="meta-item-left">
+                        <span className="meta-item-text">Font Size</span>
+                      </div>
+                      <select
+                        className="meta-select"
+                        value={fontSize}
+                        onChange={(e) => setFontSize(e.target.value)}
+                      >
+                        <option value="12px">12px</option>
+                        <option value="14px">14px</option>
+                        <option value="16px">16px</option>
+                        <option value="18px">18px</option>
+                        <option value="20px">20px</option>
+                      </select>
+                    </div>
+
+                    <div className="meta-settings-item-row">
+                      <div className="meta-item-left">
+                        <span className="meta-item-text">Default Language</span>
+                      </div>
+                      <select
+                        className="meta-select"
+                        value={defaultLanguage}
+                        onChange={(e) => setDefaultLanguage(e.target.value)}
+                      >
+                        <option value="JavaScript">JavaScript</option>
+                        <option value="Python">Python</option>
+                        <option value="Java">Java</option>
+                        <option value="C++">C++</option>
+                        <option value="TypeScript">TypeScript</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="meta-section-label">AI Settings</div>
+
+                  <div className="meta-settings-group">
+                    <div className="meta-settings-item-row">
+                      <div className="meta-item-left">
+                        <span className="meta-item-text">Explanation Level</span>
+                      </div>
+                      <select
+                        className="meta-select"
+                        value={explanationLevel}
+                        onChange={(e) => setExplanationLevel(e.target.value)}
+                      >
+                        <option value="Beginner">Beginner</option>
+                        <option value="Intermediate">Intermediate</option>
+                        <option value="Advanced">Advanced</option>
+                      </select>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Privacy Section */}
+              {activeSettingsSection === 'privacy' && (
+                <>
+                  <div
+                    className="meta-back-btn"
+                    onClick={() => setActiveSettingsSection(null)}
+                  >
+                    <span className="meta-back-arrow">‹</span>
+                    <span>Back</span>
+                  </div>
+
+                  <div className="meta-settings-group">
+                    <div className="meta-settings-item-row">
+                      <div className="meta-item-left">
+                        <span className="meta-item-text">Profile Visibility</span>
+                      </div>
+                      <select
+                        className="meta-select"
+                        value={profileVisibility}
+                        onChange={(e) => setProfileVisibility(e.target.value)}
+                      >
+                        <option value="Public">Public</option>
+                        <option value="Friends Only">Friends Only</option>
+                        <option value="Private">Private</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="meta-section-label">Change Password</div>
+
+                  <div className="meta-settings-group">
+                    <div className="meta-password-form">
+                      <input
+                        type="password"
+                        placeholder="Current Password"
+                        className="meta-input"
+                        value={passwordData.currentPassword}
+                        onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                      />
+                      <input
+                        type="password"
+                        placeholder="New Password"
+                        className="meta-input"
+                        value={passwordData.newPassword}
+                        onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                      />
+                      <input
+                        type="password"
+                        placeholder="Confirm New Password"
+                        className="meta-input"
+                        value={passwordData.confirmPassword}
+                        onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                      />
+
+                      {passwordError && (
+                        <div className="meta-error">{passwordError}</div>
+                      )}
+                      {passwordSuccess && (
+                        <div className="meta-success">{passwordSuccess}</div>
+                      )}
+
+                      <button
+                        className="meta-primary-btn"
+                        onClick={handlePasswordChange}
+                      >
+                        Update Password
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="meta-info-note">
+                    <span>Private profiles won't appear on the leaderboard</span>
+                  </div>
+                </>
+              )}
+
+              {/* Editor Preferences Section */}
+              {activeSettingsSection === 'editor' && (
+                <>
+                  <div
+                    className="meta-back-btn"
+                    onClick={() => setActiveSettingsSection(null)}
+                  >
+                    <span className="meta-back-arrow">‹</span>
+                    <span>Back</span>
+                  </div>
+
+                  <div className="meta-section-label">Display</div>
+
+                  <div className="meta-settings-group">
+                    <div className="meta-settings-item-row">
+                      <div className="meta-item-left">
+                        <span className="meta-item-text">Line Numbers</span>
+                      </div>
+                      <button
+                        className={`toggle-switch ${lineNumbers ? "active" : ""}`}
+                        onClick={() => setLineNumbers(!lineNumbers)}
+                      >
+                        <span className="toggle-slider" />
+                      </button>
+                    </div>
+
+                    <div className="meta-settings-item-row">
+                      <div className="meta-item-left">
+                        <span className="meta-item-text">Word Wrap</span>
+                      </div>
+                      <button
+                        className={`toggle-switch ${wordWrap ? "active" : ""}`}
+                        onClick={() => setWordWrap(!wordWrap)}
+                      >
+                        <span className="toggle-slider" />
+                      </button>
+                    </div>
+
+                    <div className="meta-settings-item-row">
+                      <div className="meta-item-left">
+                        <span className="meta-item-text">Tab Size</span>
+                      </div>
+                      <select
+                        className="meta-select"
+                        value={tabSize}
+                        onChange={(e) => setTabSize(e.target.value)}
+                      >
+                        <option value="2">2 spaces</option>
+                        <option value="4">4 spaces</option>
+                        <option value="8">8 spaces</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="meta-section-label">Behavior</div>
+
+                  <div className="meta-settings-group">
+                    <div className="meta-settings-item-row">
+                      <div className="meta-item-left">
+                        <span className="meta-item-text">Auto-Save</span>
+                      </div>
+                      <button
+                        className={`toggle-switch ${autoSave ? "active" : ""}`}
+                        onClick={() => setAutoSave(!autoSave)}
+                      >
+                        <span className="toggle-slider" />
+                      </button>
+                    </div>
+
+                    <div className="meta-settings-item-row">
+                      <div className="meta-item-left">
+                        <span className="meta-item-text">Auto-Complete</span>
+                      </div>
+                      <button
+                        className={`toggle-switch ${autoComplete ? "active" : ""}`}
+                        onClick={() => setAutoComplete(!autoComplete)}
+                      >
+                        <span className="toggle-slider" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="meta-info-note">
+                    <span>Changes are applied to all code editors</span>
+                  </div>
+                </>
+              )}
+
+              {/* Notifications Section */}
+              {activeSettingsSection === 'notifications' && (
+                <>
+                  <div
+                    className="meta-back-btn"
+                    onClick={() => setActiveSettingsSection(null)}
+                  >
+                    <span className="meta-back-arrow">‹</span>
+                    <span>Back</span>
+                  </div>
+
+                  <div className="meta-settings-group">
+                    <div className="meta-settings-item-row">
+                      <div className="meta-item-left">
+                        <span className="meta-item-text">Email Notifications</span>
+                      </div>
+                      <button className="toggle-switch active">
+                        <span className="toggle-slider" />
+                      </button>
+                    </div>
+
+                    <div className="meta-settings-item-row">
+                      <div className="meta-item-left">
+                        <span className="meta-item-text">Daily Challenge Reminder</span>
+                      </div>
+                      <button className="toggle-switch active">
+                        <span className="toggle-slider" />
+                      </button>
+                    </div>
+
+                    <div className="meta-settings-item-row">
+                      <div className="meta-item-left">
+                        <span className="meta-item-text">Achievement Alerts</span>
+                      </div>
+                      <button className="toggle-switch active">
+                        <span className="toggle-slider" />
+                      </button>
+                    </div>
+
+                    <div className="meta-settings-item-row">
+                      <div className="meta-item-left">
+                        <span className="meta-item-text">Weekly Progress Report</span>
+                      </div>
+                      <button className="toggle-switch">
+                        <span className="toggle-slider" />
+                      </button>
+                    </div>
+
+                    <div className="meta-settings-item-row">
+                      <div className="meta-item-left">
+                        <span className="meta-item-text">Project Collaboration Request</span>
+                      </div>
+                      <button className="toggle-switch active">
+                        <span className="toggle-slider" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="meta-info-note">
+                    <span>Manage how you receive updates from CodeGenius</span>
+                  </div>
+                </>
+              )}
+
+              {/* Account Section */}
+              {activeSettingsSection === 'account' && (
+                <>
+                  <div
+                    className="meta-back-btn"
+                    onClick={() => setActiveSettingsSection(null)}
+                  >
+                    <span className="meta-back-arrow">‹</span>
+                    <span>Back</span>
+                  </div>
+
+                  {/* Profile Info Card (view only) */}
+                  <div className="meta-profile-card" style={{ cursor: 'default' }}>
+                    <div className="meta-profile-avatar">
+                      {profilePhoto ? (
+                        <img src={profilePhoto} alt="Profile" />
+                      ) : (
+                        <span>{profileData.fullName?.charAt(0) || 'U'}</span>
+                      )}
+                    </div>
+                    <div className="meta-profile-info">
+                      <span className="meta-profile-name">{profileData.fullName || 'User'}</span>
+                      <span className="meta-profile-email">{profileData.email}</span>
+                    </div>
+                  </div>
+
+                  <div className="meta-settings-group">
+                    <div
+                      className="meta-settings-item"
+                      onClick={() => {
+                        setShowSettingsMenu(false);
+                        setActiveSettingsSection(null);
+                        setIsEditing(true);
+                      }}
+                    >
+                      <span className="meta-item-text">Edit Profile</span>
+                      <span className="meta-arrow">›</span>
+                    </div>
+                  </div>
+
+                  <div className="meta-section-label">Connected Accounts</div>
+
+                  <div className="meta-settings-group">
+                    <div className="meta-settings-item-row">
+                      <div className="meta-item-left">
+                        <span className="meta-item-text">GitHub</span>
+                      </div>
+                      {githubConnected ? (
+                        <button
+                          className="meta-disconnect-btn"
+                          onClick={() => setGithubConnected(false)}
+                        >
+                          Disconnect
+                        </button>
+                      ) : (
+                        <button
+                          className="meta-connect-btn"
+                          onClick={() => setGithubConnected(true)}
+                        >
+                          Connect
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="meta-settings-item-row">
+                      <div className="meta-item-left">
+                        <span className="meta-item-text">Google</span>
+                      </div>
+                      {googleConnected ? (
+                        <button
+                          className="meta-disconnect-btn"
+                          onClick={() => setGoogleConnected(false)}
+                        >
+                          Disconnect
+                        </button>
+                      ) : (
+                        <button
+                          className="meta-connect-btn"
+                          onClick={() => setGoogleConnected(true)}
+                        >
+                          Connect
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="meta-section-label">Account Status</div>
+
+                  <div className="meta-settings-group">
+                    <div className="meta-settings-item-row">
+                      <div className="meta-item-left">
+                        <span className="meta-item-text">Email Verified</span>
+                      </div>
+                      <span className="meta-status-badge verified">Verified</span>
+                    </div>
+
+                    <div className="meta-settings-item-row">
+                      <div className="meta-item-left">
+                        <span className="meta-item-text">Member Since</span>
+                      </div>
+                      <span className="meta-status-text">Dec 2024</span>
+                    </div>
+                  </div>
+
+                  <div className="meta-section-label">Data</div>
+
+                  <div className="meta-settings-group">
+                    <div
+                      className="meta-settings-item"
+                      onClick={() => alert('Exporting your data... This feature will be available soon.')}
+                    >
+                      <span className="meta-item-text">Export My Data</span>
+                      <span className="meta-arrow">›</span>
+                    </div>
+                  </div>
+
+                  <div className="meta-section-label">Danger Zone</div>
+
+                  <div className="meta-settings-group danger-group">
+                    {!showDeleteConfirm ? (
+                      <div
+                        className="meta-settings-item danger-item"
+                        onClick={() => setShowDeleteConfirm(true)}
+                      >
+                        <span className="meta-item-text">Delete Account</span>
+                        <span className="meta-arrow">›</span>
+                      </div>
+                    ) : (
+                      <div className="meta-delete-confirm">
+                        <p>Are you sure you want to delete your account? This action cannot be undone.</p>
+                        <div className="meta-delete-actions">
+                          <button
+                            className="meta-cancel-btn"
+                            onClick={() => setShowDeleteConfirm(false)}
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            className="meta-delete-btn"
+                            onClick={() => {
+                              alert('Account deletion requested. This feature will be available soon.');
+                              setShowDeleteConfirm(false);
+                            }}
+                          >
+                            Delete Account
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="meta-info-note">
+                    <span>Need help? Contact support@codegenius.com</span>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
       <p className="sub-text">
         Manage your account information and track your coding progress.
       </p>
@@ -396,34 +1104,6 @@ function ProfileSettings({ isDark, toggleTheme, setIsLoggedIn, setPage }) {
                     <p>{profileData.linkedin || "Not set"}</p>
                   )}
                 </div>
-              </div>
-            </div>
-
-            {/* SETTINGS */}
-            <div className="info-card" style={{ marginTop: 20 }}>
-              <h3>Settings</h3>
-
-              <div className="setting-item">
-                <div>
-                  <label>Dark Mode</label>
-                  <p>Switch between light and dark theme</p>
-                </div>
-                <button
-                  className={`toggle-switch ${isDark ? "active" : ""}`}
-                  onClick={toggleTheme}
-                >
-                  <span className="toggle-slider" />
-                </button>
-              </div>
-
-              <div className="setting-item">
-                <div>
-                  <label>Sign Out</label>
-                  <p>Log out of your account</p>
-                </div>
-                <button className="logout-btn-compact" onClick={handleLogout}>
-                  🚪 Logout
-                </button>
               </div>
             </div>
           </div>

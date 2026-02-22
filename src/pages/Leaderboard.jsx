@@ -120,11 +120,8 @@ function Leaderboard() {
   return (
     <div className="dashboard-container">
       {/* PAGE HEADER */}
-      <div className="page-header-row">
-        <div>
-          <h1 className="welcome-text">Leaderboard & Badges</h1>
-          <p className="sub-text">Compete with other developers and earn achievements for your coding skills.</p>
-        </div>
+      <div className="leaderboard-header-row">
+        <h1 className="welcome-text leaderboard-title">Leaderboard & Badges</h1>
         <div className="rank-indicator">
           <span className="rank-label">🏅 Rank</span>
           <span className="rank-number">#{userRank || "-"}</span>

@@ -29,6 +29,7 @@ import adminRoute from "./routes/admin.js";
 import projectsRoute from "./routes/projects.js";
 import reportsRoute from "./routes/reports.js";
 import oauthRoute from "./routes/oauth.js";
+import collaborationsRoute from "./routes/collaborations.js";
 
 dotenv.config();
 
@@ -75,6 +76,9 @@ app.use("/api/reports", reportsRoute);
 
 // OAuth (Google, GitHub login)
 app.use("/api/oauth", oauthRoute);
+
+// Collaboration Requests
+app.use("/api/collaborations", collaborationsRoute);
 
 // --------------------
 // Database Health Check
@@ -123,4 +127,5 @@ app.listen(PORT, async () => {
   console.log("→ /api/problem-generate (Problem Generator)");
   console.log("→ /api/problem-check (Solution Checker)");
   console.log("→ /api/health (Database Health Check)");
+  console.log("→ /api/collaborations (Collaboration Requests)");
 });

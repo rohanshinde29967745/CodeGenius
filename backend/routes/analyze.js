@@ -33,14 +33,22 @@ The JSON structure must be EXACTLY:
     "space": "O(1)",
     "explanation": "Brief explanation of why this complexity"
   },
-  "flowchart": "Mermaid flowchart syntax starting with graph TD",
+  "flowchart": "Mermaid flowchart code",
   "optimized": "full optimized code as multiline string"
 }
 
 CRITICAL RULES:
 - explanation array must have EXACTLY ${codeLines} items - one per actual non-empty line of code
 - For each explanation item, include the actual code line text and its explanation
-- flowchart must be valid Mermaid syntax (graph TD\\n  A[Start] --> B[Step]...)
+- flowchart MUST be valid Mermaid syntax following this EXACT format:
+  graph TD
+    A[Start] --> B[Step 1]
+    B --> C[Step 2]
+    C --> D[End]
+  DO NOT use semicolons at end of lines
+  DO NOT use quotes inside brackets
+  Keep node labels SHORT and SIMPLE (max 20 chars)
+  Use only alphanumeric characters and spaces in labels
 - errors: if no errors found, return empty array []
 - If code has no issues, return empty errors array
 - DO NOT include markdown backticks

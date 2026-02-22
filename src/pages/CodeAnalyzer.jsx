@@ -8,6 +8,7 @@ import "prismjs/components/prism-c";
 import "prismjs/components/prism-cpp";
 import "../App.css";
 import { getCurrentUser } from "../services/api";
+import { copyWithToast, checkLanguageMismatch, detectLanguage } from "../utils/codeUtils";
 
 // Styled Explanation Component - Line by line explanation
 function ExplanationRenderer({ value }) {
@@ -175,19 +176,38 @@ function FlowchartRenderer({ value }) {
             useMaxWidth: true,
             htmlLabels: true,
             curve: 'basis'
-          }
+          },
+          securityLevel: 'loose'
         });
 
         // Clean up the Mermaid code
         let mermaidCode = typeof value === "string" ? value : String(value);
 
         // Remove markdown code blocks if present
-        mermaidCode = mermaidCode.replace(/```mermaid\n?/g, '').replace(/```\n?/g, '');
+        mermaidCode = mermaidCode.replace(/```mermaid\n?/gi, '').replace(/```\n?/g, '');
+
+        // Remove trailing semicolons from lines (Mermaid doesn't need them)
+        mermaidCode = mermaidCode.split('\n').map(line => line.replace(/;+\s*$/, '')).join('\n');
+
+        // Fix common issues with quotes in node labels
+        mermaidCode = mermaidCode.replace(/\[([^\]]*)"([^\]"]*)"\s*([^\]]*)\]/g, '[$1$2$3]');
+
+        // Ensure proper arrow syntax (remove extra spaces)
+        mermaidCode = mermaidCode.replace(/--\s*>\s*/g, '-->');
+
+        // Escape special characters in labels
+        mermaidCode = mermaidCode.replace(/\[([^\]]*)\]/g, (match, content) => {
+          // Remove problematic characters from labels
+          const cleaned = content.replace(/[";]/g, '').trim();
+          return `[${cleaned}]`;
+        });
 
         // Ensure it starts with a valid graph declaration
         if (!mermaidCode.trim().startsWith('graph') && !mermaidCode.trim().startsWith('flowchart')) {
           mermaidCode = 'graph TD\n' + mermaidCode;
         }
+
+        console.log("Cleaned Mermaid code:", mermaidCode);
 
         // Clear previous content
         containerRef.current.innerHTML = '';
@@ -200,9 +220,12 @@ function FlowchartRenderer({ value }) {
       } catch (err) {
         console.error('Mermaid render error:', err);
         setError('Could not render flowchart diagram');
-        // Fallback to showing raw code
+        // Fallback to showing formatted code
         if (containerRef.current) {
-          containerRef.current.innerHTML = `<pre class="flowchart-fallback">${typeof value === "string" ? value : JSON.stringify(value, null, 2)}</pre>`;
+          let displayCode = typeof value === "string" ? value : JSON.stringify(value, null, 2);
+          // Format for display
+          displayCode = displayCode.replace(/```mermaid\n?/gi, '').replace(/```\n?/g, '');
+          containerRef.current.innerHTML = `<pre class="flowchart-fallback">${displayCode}</pre>`;
         }
       }
     };
@@ -284,6 +307,7 @@ export default function CodeAnalyzer() {
   const [activeTab, setActiveTab] = useState("explanation");
   const [analysisResult, setAnalysisResult] = useState(null);
   const [error, setError] = useState("");
+  const [languageMismatch, setLanguageMismatch] = useState(null);
 
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
@@ -313,6 +337,94 @@ export default function CodeAnalyzer() {
     "C++": "cpp",
     Java: "java",
   };
+
+  // Auto-detect language from code
+  const detectLanguage = (code) => {
+    if (!code || code.trim().length < 10) return null;
+
+    const codeText = code.toLowerCase();
+
+    // Python patterns
+    const pythonPatterns = [
+      /\bdef\s+\w+\s*\(/,          // def function_name(
+      /\bimport\s+\w+/,            // import module
+      /\bfrom\s+\w+\s+import/,     // from x import
+      /\bprint\s*\(/,              // print(
+      /:\s*$/m,                    // colon at end of line
+      /\bself\./,                  // self.
+      /\belif\b/,                  // elif
+      /\b__\w+__\b/,               // __name__, __init__
+    ];
+
+    // Java patterns
+    const javaPatterns = [
+      /\bpublic\s+(static\s+)?class\b/,   // public class
+      /\bpublic\s+static\s+void\s+main\b/, // main method
+      /\bSystem\.out\.print/,              // System.out.print
+      /\bprivate\s+\w+\s+\w+\s*;/,         // private int x;
+      /\bnew\s+\w+\s*\(/,                  // new Object(
+      /\bextends\s+\w+/,                   // extends Class
+      /\bimplements\s+\w+/,                // implements Interface
+    ];
+
+    // C++ patterns
+    const cppPatterns = [
+      /\#include\s*<\w+>/,              // #include <iostream>
+      /\bstd::/,                        // std::
+      /\bcout\s*<</,                    // cout <<
+      /\bcin\s*>>/,                     // cin >>
+      /\bint\s+main\s*\(/,              // int main(
+      /\busing\s+namespace\s+std/,      // using namespace std
+      /\bvector\s*</,                   // vector<
+      /\b->\b/,                         // pointer arrow
+    ];
+
+    // JavaScript patterns
+    const jsPatterns = [
+      /\bconst\s+\w+\s*=/,           // const x =
+      /\blet\s+\w+\s*=/,             // let x =
+      /\bvar\s+\w+\s*=/,             // var x =
+      /\bfunction\s+\w+\s*\(/,       // function name(
+      /=>\s*{/,                      // arrow function
+      /\bconsole\.(log|warn|error)\s*\(/, // console.log
+      /\bdocument\./,                // document.
+      /\bwindow\./,                  // window.
+      /\basync\s+function/,          // async function
+      /\bawait\s+/,                  // await
+      /\brequire\s*\(/,              // require(
+      /\bexport\s+(default\s+)?/,    // export
+    ];
+
+    // Count matches for each language
+    let pythonScore = 0, javaScore = 0, cppScore = 0, jsScore = 0;
+
+    pythonPatterns.forEach(p => { if (p.test(code)) pythonScore++; });
+    javaPatterns.forEach(p => { if (p.test(code)) javaScore++; });
+    cppPatterns.forEach(p => { if (p.test(code)) cppScore++; });
+    jsPatterns.forEach(p => { if (p.test(code)) jsScore++; });
+
+    // Find the highest score
+    const scores = { Python: pythonScore, Java: javaScore, "C++": cppScore, JavaScript: jsScore };
+    const maxScore = Math.max(...Object.values(scores));
+
+    if (maxScore === 0) return null;
+
+    for (const [lang, score] of Object.entries(scores)) {
+      if (score === maxScore) return lang;
+    }
+
+    return null;
+  };
+
+  // Check for language mismatch when code changes (show warning instead of auto-switch)
+  useEffect(() => {
+    if (inputCode.trim().length > 30) {
+      const mismatchResult = checkLanguageMismatch(inputCode, language);
+      setLanguageMismatch(mismatchResult.mismatch ? mismatchResult : null);
+    } else {
+      setLanguageMismatch(null);
+    }
+  }, [inputCode, language]);
 
   // Highlight code using Prism
   const highlightCode = (code, lang) => {
@@ -422,8 +534,8 @@ export default function CodeAnalyzer() {
 
   return (
     <div className="dashboard-container code-analyzer-page">
-      <h1 className="welcome-text">Code Analyzer</h1>
-      <p className="sub-text">
+      <h1 className="welcome-text page-title-left">Code Analyzer</h1>
+      <p className="sub-text page-subtitle">
         Upload your code and get AI-powered insights, explanations, and optimizations.
       </p>
 
@@ -454,6 +566,23 @@ export default function CodeAnalyzer() {
             </div>
           </div>
 
+          {/* Language Mismatch Warning */}
+          {languageMismatch && (
+            <div className="language-mismatch-warning">
+              <span className="warning-icon">⚠️</span>
+              <span className="warning-text">
+                It looks like you're writing <span className="warning-highlight">{languageMismatch.detected}</span> code,
+                but <span className="warning-highlight">{languageMismatch.selected}</span> is selected.
+              </span>
+              <button
+                className="fix-btn"
+                onClick={() => setLanguage(languageMismatch.detected)}
+              >
+                Switch to {languageMismatch.detected}
+              </button>
+            </div>
+          )}
+
           {/* ACTION BUTTONS */}
           <div className="upload-buttons">
             <button
@@ -468,6 +597,19 @@ export default function CodeAnalyzer() {
               onClick={() => cameraInputRef.current.click()}
             >
               📷 Take Photo
+            </button>
+
+            <button
+              className="action-btn clear-btn"
+              onClick={() => {
+                setInputCode("");
+                setAnalysisResult(null);
+                setError("");
+                setLanguageMismatch(null);
+              }}
+              disabled={!inputCode}
+            >
+              🗑️ Clear
             </button>
           </div>
 
