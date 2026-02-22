@@ -120,10 +120,8 @@ router.post("/login", async (req, res) => {
             return res.status(401).json({ error: "Invalid credentials" });
         }
 
-        // Check if role matches (optional - based on your login component)
-        if (role && user.role !== role) {
-            return res.status(403).json({ error: `Access denied. You are not registered as ${role}` });
-        }
+        // Role check removed - mobile app handles role-based navigation based on user.role from database
+        // The frontend role selector is now just for UX, not authentication
 
         // Update last login
         await query(
