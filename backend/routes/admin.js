@@ -54,6 +54,11 @@ router.get("/stats", async (req, res) => {
        AND submitted_at < CURRENT_DATE`
         );
 
+        // Get active contests
+        const contestsResult = await query(
+            `SELECT COUNT(*) as count FROM contests WHERE status = 'LIVE'`
+        );
+
         res.json({
             totalUsers: parseInt(usersResult.rows[0].total) || 0,
             newUsersToday: parseInt(newUsersResult.rows[0].count) || 0,
@@ -61,6 +66,7 @@ router.get("/stats", async (req, res) => {
             activeProblems: parseInt(problemsResult.rows[0].count) || 0,
             projectUploadsToday: parseInt(projectsResult.rows[0].count) || 0,
             totalProjects: parseInt(totalProjectsResult.rows[0].count) || 0,
+            activeContests: parseInt(contestsResult.rows[0].count) || 0,
             growth: {
                 users: calculateGrowth(
                     parseInt(newUsersResult.rows[0].count),

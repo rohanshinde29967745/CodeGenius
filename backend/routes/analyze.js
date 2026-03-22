@@ -152,10 +152,10 @@ ${inputCode}
             userId,
             inputCode,
             language,
-            out.explanation.join("\n"),
-            out.errors,
+            JSON.stringify(out.explanation),
+            JSON.stringify(out.errors),
             out.complexity, // Ensure db column is JSONB
-            out.flowchart.join("\n"),
+            out.flowchart,
             out.optimized
           ]
         );
@@ -167,8 +167,8 @@ ${inputCode}
 
     res.json(out);
   } catch (error) {
-    console.error("Gemini API Error:", error?.response?.data || error);
-    res.status(500).json({ error: "Failed to analyze code" });
+    console.error("Gemini API Error:", error?.response?.data || error.message || error);
+    res.status(500).json({ error: "Failed to analyze code", details: String(error?.message || error) });
   }
 });
 

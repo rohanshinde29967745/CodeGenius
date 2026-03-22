@@ -8,7 +8,7 @@ import "prismjs/components/prism-c";
 import "prismjs/components/prism-cpp";
 import "../App.css";
 import { getCurrentUser } from "../services/api";
-import { copyWithToast, checkLanguageMismatch, detectLanguage } from "../utils/codeUtils";
+import { copyWithToast, checkLanguageMismatch } from "../utils/codeUtils";
 
 function CodeConverter() {
   const [inputLang, setInputLang] = useState("Python");
@@ -17,7 +17,13 @@ function CodeConverter() {
   const [convertedCode, setConvertedCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [languageMismatch, setLanguageMismatch] = useState(null);
+
+  // Panel states for maximize
+  const [isInputMaximized, setIsInputMaximized] = useState(false);
+  const [isOutputMaximized, setIsOutputMaximized] = useState(false);
+
   const inputHighlightRef = useRef(null);
+  const outputHighlightRef = useRef(null);
 
   // Language icons mapping
   const langIcons = {
@@ -107,6 +113,24 @@ function CodeConverter() {
     }
   };
 
+  // Clear all
+  const handleClear = () => {
+    setInputCode("");
+    setConvertedCode("");
+    setLanguageMismatch(null);
+  };
+
+  // Toggle maximize
+  const toggleInputMaximize = () => {
+    setIsInputMaximized(!isInputMaximized);
+    setIsOutputMaximized(false);
+  };
+
+  const toggleOutputMaximize = () => {
+    setIsOutputMaximized(!isOutputMaximized);
+    setIsInputMaximized(false);
+  };
+
   // BACKEND CALL
   const handleConvert = async () => {
     if (!inputCode.trim()) {
@@ -147,188 +171,200 @@ function CodeConverter() {
   };
 
   return (
-    <div className="dashboard-container converter-page">
-      {/* PAGE TITLE */}
-      <h1 className="welcome-text page-title-left">Code Converter</h1>
-      <p className="sub-text page-subtitle">Convert code between programming languages using AI.</p>
-
-      {/* LANGUAGE SELECTORS ROW */}
-      <div className="converter-lang-row" style={{ marginTop: '24px' }}>
-        <div className="converter-lang-group">
-          <label className="dropdown-label">Source Language</label>
-          <div className="converter-select-wrapper">
-            <span className="converter-lang-icon">{langIcons[inputLang]}</span>
-            <select
-              className="converter-select"
-              value={inputLang}
-              onChange={(e) => setInputLang(e.target.value)}
-            >
-              <option>Python</option>
-              <option>JavaScript</option>
-              <option>C++</option>
-              <option>Java</option>
-            </select>
-          </div>
+    <div className="cc-page problem-solving-page">
+      {/* HEADER */}
+      <div className="ps-header">
+        <div className="ps-header-left">
+          <h1 className="ps-page-title">Code Converter</h1>
+          <p className="ps-page-subtitle">Convert code between programming languages using AI</p>
         </div>
-
-        <button className="converter-swap-btn" onClick={handleSwapLanguages}>
-          ⇄
-        </button>
-
-        <div className="converter-lang-group">
-          <label className="dropdown-label">Target Language</label>
-          <div className="converter-select-wrapper">
-            <span className="converter-lang-icon">{langIcons[outputLang]}</span>
-            <select
-              className="converter-select"
-              value={outputLang}
-              onChange={(e) => setOutputLang(e.target.value)}
-            >
-              <option>JavaScript</option>
-              <option>Python</option>
-              <option>C++</option>
-              <option>Java</option>
-            </select>
+        <div className="ps-header-right">
+          <div className="cc-lang-selectors">
+            <div className="cc-lang-group">
+              <label>From</label>
+              <select value={inputLang} onChange={(e) => setInputLang(e.target.value)} className="cc-lang-select">
+                <option>Python</option>
+                <option>JavaScript</option>
+                <option>C++</option>
+                <option>Java</option>
+              </select>
+            </div>
+            <button className="cc-swap-btn" onClick={handleSwapLanguages} title="Swap languages">
+              ⇄
+            </button>
+            <div className="cc-lang-group">
+              <label>To</label>
+              <select value={outputLang} onChange={(e) => setOutputLang(e.target.value)} className="cc-lang-select">
+                <option>JavaScript</option>
+                <option>Python</option>
+                <option>C++</option>
+                <option>Java</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* TWO PANEL LAYOUT */}
-      <div className="converter-panels">
-        {/* LEFT PANEL: INPUT */}
-        <div className="converter-panel vscode-panel">
-          <div className="converter-panel-header vscode-header">
-            <div className="converter-panel-title">
-              <span className="converter-code-icon">&lt;&gt;</span>
-              <span>Input Code</span>
-              <span className="converter-lang-badge input-badge">
-                {langIcons[inputLang]} {inputLang}
-              </span>
-            </div>
-            <button className="converter-action-btn" title="Copy" onClick={() => handleCopy(inputCode)}>
-              <span className="btn-icon">📋</span>
-              <span className="btn-text">Copy</span>
-            </button>
-          </div>
+      {/* MAIN LAYOUT */}
+      <div className="ps-main-layout">
+        <div className="ps-panels-row">
 
-          {/* Language Mismatch Warning */}
-          {languageMismatch && (
-            <div className="language-mismatch-warning">
-              <span className="warning-icon">⚠️</span>
-              <span className="warning-text">
-                It looks like you're writing <span className="warning-highlight">{languageMismatch.detected}</span> code,
-                but <span className="warning-highlight">{languageMismatch.selected}</span> is selected.
-              </span>
-              <button
-                className="fix-btn"
-                onClick={() => setInputLang(languageMismatch.detected)}
-              >
-                Switch to {languageMismatch.detected}
-              </button>
+          {/* LEFT PANEL - Input Code */}
+          <div className={`ps-editor-panel ${isInputMaximized ? 'maximized' : ''} ${isOutputMaximized ? 'hidden' : ''}`}>
+            {/* Toolbar */}
+            <div className="ps-editor-toolbar">
+              <div className="ps-toolbar-left">
+                <span className="ps-code-icon">&lt;/&gt;</span>
+                <span className="ps-toolbar-title">Input Code</span>
+                <span className="cc-lang-badge">
+                  {langIcons[inputLang]} {inputLang}
+                </span>
+              </div>
+              <div className="ps-toolbar-right">
+                <button className="ps-toolbar-btn" onClick={() => handleCopy(inputCode)} title="Copy">
+                  <span>📋</span> Copy
+                </button>
+                <button
+                  className="ps-toolbar-btn maximize"
+                  onClick={toggleInputMaximize}
+                  title={isInputMaximized ? "Minimize" : "Maximize"}
+                >
+                  {isInputMaximized ? (
+                    <><span>⊖</span> Min</>
+                  ) : (
+                    <><span>⊕</span> Max</>
+                  )}
+                </button>
+              </div>
             </div>
-          )}
 
-          <div className="vscode-editor">
-            <div className="vscode-line-numbers">
-              <pre>{getLineNumbers(inputCode)}</pre>
-            </div>
-            <div className="vscode-editor-wrapper">
-              <pre
-                ref={inputHighlightRef}
-                className="vscode-highlight-layer"
-                aria-hidden="true"
-              >
-                <code
-                  dangerouslySetInnerHTML={{
-                    __html: highlightCode(inputCode, inputLang) + (inputCode.endsWith('\n') ? ' ' : '\n ')
-                  }}
-                />
-              </pre>
-              <textarea
-                className="vscode-textarea-overlay"
-                placeholder="Paste your code here..."
-                value={inputCode}
-                onChange={(e) => setInputCode(e.target.value)}
-                onScroll={handleInputScroll}
-                spellCheck="false"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* RIGHT PANEL: OUTPUT */}
-        <div className="converter-panel vscode-panel">
-          <div className="converter-panel-header vscode-header">
-            <div className="converter-panel-title">
-              <span className="converter-code-icon">&lt;&gt;</span>
-              <span>Converted Code</span>
-              <span className="converter-lang-badge output-badge">
-                {langIcons[outputLang]} {outputLang}
-              </span>
-            </div>
-            <div className="converter-action-btns">
-              <button className="converter-action-btn" title="Copy" onClick={() => handleCopy(convertedCode)}>
-                <span className="btn-icon">📋</span>
-                <span className="btn-text">Copy</span>
-              </button>
-              <button className="converter-action-btn" title="Download" onClick={handleDownload}>
-                <span className="btn-icon">⬇️</span>
-                <span className="btn-text">Download</span>
-              </button>
-            </div>
-          </div>
-          <div className="vscode-editor output-editor">
-            {convertedCode ? (
-              <>
-                <div className="vscode-line-numbers">
-                  <pre>{getLineNumbers(convertedCode)}</pre>
-                </div>
-                <div className="vscode-editor-wrapper">
-                  <pre className="vscode-highlight-layer">
-                    <code
-                      dangerouslySetInnerHTML={{
-                        __html: highlightCode(convertedCode, outputLang)
-                      }}
-                    />
-                  </pre>
-                </div>
-              </>
-            ) : (
-              <div className="converter-placeholder">
-                <span className="placeholder-icon">🔄</span>
-                <p>Converted code will appear here</p>
+            {/* Language Mismatch Warning */}
+            {languageMismatch && (
+              <div className="ps-mismatch-warning">
+                <span className="warning-icon">⚠️</span>
+                <span>
+                  Detected <strong>{languageMismatch.detected}</strong> code but <strong>{languageMismatch.selected}</strong> is selected.
+                </span>
+                <button onClick={() => setInputLang(languageMismatch.detected)}>
+                  Switch to {languageMismatch.detected}
+                </button>
               </div>
             )}
-          </div>
-        </div>
-      </div>
 
-      {/* CONVERT BUTTON */}
-      <div className="converter-btn-wrapper">
-        <button
-          className="converter-clear-btn"
-          onClick={() => {
-            setInputCode("");
-            setConvertedCode("");
-            setLanguageMismatch(null);
-          }}
-          disabled={!inputCode && !convertedCode}
-        >
-          🗑️ Clear All
-        </button>
-        <button
-          className="converter-main-btn"
-          onClick={handleConvert}
-          disabled={loading}
-        >
-          <span>🔄</span>
-          {loading ? "Converting..." : "Convert Code"}
-          <span>→</span>
-        </button>
+            {/* Code Editor */}
+            <div className="ps-code-editor">
+              <div className="ps-line-numbers">
+                <pre>{getLineNumbers(inputCode)}</pre>
+              </div>
+              <div className="ps-editor-wrapper">
+                <pre
+                  ref={inputHighlightRef}
+                  className="ps-highlight-layer"
+                  aria-hidden="true"
+                >
+                  <code
+                    dangerouslySetInnerHTML={{
+                      __html: highlightCode(inputCode, inputLang) + (inputCode.endsWith('\n') ? ' ' : '\n ')
+                    }}
+                  />
+                </pre>
+                <textarea
+                  className="ps-code-textarea"
+                  placeholder="// Paste your code here to convert..."
+                  value={inputCode}
+                  onChange={(e) => setInputCode(e.target.value)}
+                  onScroll={handleInputScroll}
+                  spellCheck="false"
+                />
+              </div>
+            </div>
+
+            {/* Footer with Clear and Convert Buttons */}
+            <div className="cc-convert-footer">
+              <button className="cc-clear-btn" onClick={handleClear} disabled={!inputCode && !convertedCode}>
+                <span>🗑️</span> Clear
+              </button>
+              <button className="cc-convert-btn" onClick={handleConvert} disabled={loading || !inputCode.trim()}>
+                <span className="btn-icon">🔄</span>
+                {loading ? "Converting..." : "Convert Code"}
+                <span className="btn-icon">→</span>
+              </button>
+            </div>
+          </div>
+
+          {/* RIGHT PANEL - Converted Code */}
+          <div className={`ps-description-panel ${isOutputMaximized ? 'maximized' : ''} ${isInputMaximized ? 'hidden' : ''}`}>
+            {/* Header */}
+            <div className="ps-panel-header">
+              <div className="ps-tabs">
+                <button className="ps-tab active">
+                  <span className="tab-icon">✨</span>
+                  Converted Code
+                </button>
+              </div>
+              <div className="cc-output-actions">
+                <span className="cc-lang-badge output">
+                  {langIcons[outputLang]}
+                </span>
+                <button className="ps-toolbar-btn" onClick={() => handleCopy(convertedCode)} disabled={!convertedCode} title="Copy">
+                  <span>📋</span>
+                </button>
+                <button className="ps-toolbar-btn" onClick={handleDownload} disabled={!convertedCode} title="Download">
+                  <span>⬇️</span>
+                </button>
+                <button
+                  className="ps-toolbar-btn maximize"
+                  onClick={toggleOutputMaximize}
+                  title={isOutputMaximized ? "Minimize" : "Maximize"}
+                >
+                  {isOutputMaximized ? (
+                    <><span>⊖</span></>
+                  ) : (
+                    <><span>⊕</span></>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Output Content */}
+            <div className="cc-output-content">
+              {loading ? (
+                <div className="cc-loading">
+                  <span className="loading-icon">⏳</span>
+                  <p>Converting your code...</p>
+                </div>
+              ) : convertedCode ? (
+                <div className="ps-code-editor cc-output-editor">
+                  <div className="ps-line-numbers">
+                    <pre>{getLineNumbers(convertedCode)}</pre>
+                  </div>
+                  <div className="ps-editor-wrapper">
+                    <pre
+                      ref={outputHighlightRef}
+                      className="ps-highlight-layer"
+                    >
+                      <code
+                        dangerouslySetInnerHTML={{
+                          __html: highlightCode(convertedCode, outputLang)
+                        }}
+                      />
+                    </pre>
+                  </div>
+                </div>
+              ) : (
+                <div className="cc-empty-state">
+                  <span className="empty-icon">🔄</span>
+                  <p>Converted code will appear here</p>
+                  <small>Enter your code and click "Convert Code"</small>
+                </div>
+              )}
+            </div>
+          </div>
+
+        </div>
       </div>
     </div>
   );
 }
 
 export default CodeConverter;
-

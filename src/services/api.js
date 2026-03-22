@@ -61,8 +61,8 @@ export const updateUserProfile = async (userId, profileData) => {
 // LEADERBOARD APIs
 // ========================
 
-export const getLeaderboard = async (period = "all_time", limit = 50) => {
-    const response = await fetch(`${API_BASE}/leaderboard?period=${period}&limit=${limit}`, {
+export const getLeaderboard = async (period = "all_time", limit = 50, scope = "global") => {
+    const response = await fetch(`${API_BASE}/leaderboard?period=${period}&limit=${limit}&scope=${scope}`, {
         headers: getAuthHeaders(),
     });
     return response.json();
@@ -189,6 +189,40 @@ export const getProfile = async (userId) => {
     return response.json();
 };
 
+export const changePassword = async (userId, currentPassword, newPassword) => {
+    const response = await fetch(`${API_BASE}/auth/change-password/${userId}`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ currentPassword, newPassword }),
+    });
+    return response.json();
+};
+
+export const deleteAccount = async (userId, password) => {
+    const response = await fetch(`${API_BASE}/auth/account/${userId}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ password }),
+    });
+    return response.json();
+};
+
+export const saveUserSettings = async (userId, settings) => {
+    const response = await fetch(`${API_BASE}/auth/settings/${userId}`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ settings }),
+    });
+    return response.json();
+};
+
+export const getUserSettings = async (userId) => {
+    const response = await fetch(`${API_BASE}/auth/settings/${userId}`, {
+        headers: getAuthHeaders(),
+    });
+    return response.json();
+};
+
 // ========================
 // COLLABORATION APIs
 // ========================
@@ -230,6 +264,253 @@ export const ignoreCollaboration = async (requestId, userId) => {
         method: "PUT",
         headers: getAuthHeaders(),
         body: JSON.stringify({ userId }),
+    });
+    return response.json();
+};
+
+// ========================
+// CONNECTIONS APIs
+// ========================
+
+export const getAllUsers = async (search = "") => {
+    try {
+        const response = await fetch(`${API_BASE}/connections/users?search=${encodeURIComponent(search)}`, {
+            headers: getAuthHeaders(),
+        });
+        if (!response.ok) {
+            console.error("getAllUsers API error:", response.status);
+            return [];
+        }
+        const data = await response.json();
+        return Array.isArray(data) ? data : [];
+    } catch (error) {
+        console.error("getAllUsers fetch error:", error);
+        return [];
+    }
+};
+
+export const sendConnectionRequest = async (receiverId) => {
+    const response = await fetch(`${API_BASE}/connections/request`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ receiverId }),
+    });
+    return response.json();
+};
+
+export const acceptConnectionRequest = async (connectionId) => {
+    const response = await fetch(`${API_BASE}/connections/accept`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ connectionId }),
+    });
+    return response.json();
+};
+
+export const getPendingConnections = async () => {
+    try {
+        const response = await fetch(`${API_BASE}/connections/requests`, {
+            headers: getAuthHeaders(),
+        });
+        if (!response.ok) return [];
+        const data = await response.json();
+        return Array.isArray(data) ? data : [];
+    } catch (error) {
+        console.error("getPendingConnections error:", error);
+        return [];
+    }
+};
+
+export const getFriends = async () => {
+    try {
+        const response = await fetch(`${API_BASE}/connections/friends`, {
+            headers: getAuthHeaders(),
+        });
+        if (!response.ok) return [];
+        const data = await response.json();
+        return Array.isArray(data) ? data : [];
+    } catch (error) {
+        console.error("getFriends error:", error);
+        return [];
+    }
+};
+
+export const getUserProfile = async (userId) => {
+    try {
+        const response = await fetch(`${API_BASE}/connections/profile/${userId}`, {
+            headers: getAuthHeaders(),
+        });
+        if (!response.ok) {
+            return { error: "Failed to fetch profile" };
+        }
+        return await response.json();
+    } catch (error) {
+        console.error("getUserProfile error:", error);
+        return { error: "Failed to fetch profile" };
+    }
+};
+
+// ========================
+// SAVED ITEMS APIs
+// ========================
+
+export const saveProblem = async (userId, problemData) => {
+    const response = await fetch(`${API_BASE}/saved/problems`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ userId, ...problemData }),
+    });
+    return response.json();
+};
+
+export const unsaveProblem = async (userId, problemId) => {
+    const response = await fetch(`${API_BASE}/saved/problems/${userId}/${problemId}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+    });
+    return response.json();
+};
+
+export const getSavedProblems = async (userId) => {
+    const response = await fetch(`${API_BASE}/saved/problems/${userId}`, {
+        headers: getAuthHeaders(),
+    });
+    return response.json();
+};
+
+export const checkProblemSaved = async (userId, problemId) => {
+    const response = await fetch(`${API_BASE}/saved/problems/check/${userId}/${problemId}`, {
+        headers: getAuthHeaders(),
+    });
+    return response.json();
+};
+
+export const saveProject = async (userId, projectId) => {
+    const response = await fetch(`${API_BASE}/saved/projects`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ userId, projectId }),
+    });
+    return response.json();
+};
+
+export const unsaveProject = async (userId, projectId) => {
+    const response = await fetch(`${API_BASE}/saved/projects/${userId}/${projectId}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+    });
+    return response.json();
+};
+
+export const getSavedProjects = async (userId) => {
+    const response = await fetch(`${API_BASE}/saved/projects/${userId}`, {
+        headers: getAuthHeaders(),
+    });
+    return response.json();
+};
+
+export const checkProjectSaved = async (userId, projectId) => {
+    const response = await fetch(`${API_BASE}/saved/projects/check/${userId}/${projectId}`, {
+        headers: getAuthHeaders(),
+    });
+    return response.json();
+};
+
+// ========================
+// NOTIFICATIONS APIs
+// ========================
+
+export const getNotifications = async (userId, limit = 50) => {
+    const response = await fetch(`${API_BASE}/notifications/${userId}?limit=${limit}`, {
+        headers: getAuthHeaders(),
+    });
+    return response.json();
+};
+
+export const getUnreadNotificationCount = async (userId) => {
+    const response = await fetch(`${API_BASE}/notifications/${userId}/unread-count`, {
+        headers: getAuthHeaders(),
+    });
+    return response.json();
+};
+
+export const markNotificationAsRead = async (notificationId) => {
+    const response = await fetch(`${API_BASE}/notifications/${notificationId}/read`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+    });
+    return response.json();
+};
+
+export const markAllNotificationsAsRead = async (userId) => {
+    const response = await fetch(`${API_BASE}/notifications/${userId}/read-all`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+    });
+    return response.json();
+};
+
+export const deleteNotification = async (notificationId) => {
+    const response = await fetch(`${API_BASE}/notifications/${notificationId}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+    });
+    return response.json();
+};
+
+// ========================
+// INSIGHTS APIs
+// ========================
+
+export const getInsightsSummary = async (userId) => {
+    const response = await fetch(`${API_BASE}/insights/summary/${userId}`, {
+        headers: getAuthHeaders(),
+    });
+    return response.json();
+};
+
+export const getInsightsHeatmap = async (userId) => {
+    const response = await fetch(`${API_BASE}/insights/heatmap/${userId}`, {
+        headers: getAuthHeaders(),
+    });
+    return response.json();
+};
+
+export const getInsightsProgress = async (userId, range = "30d") => {
+    const response = await fetch(`${API_BASE}/insights/progress/${userId}?range=${range}`, {
+        headers: getAuthHeaders(),
+    });
+    return response.json();
+};
+
+export const getInsightsSkills = async (userId) => {
+    const response = await fetch(`${API_BASE}/insights/skills/${userId}`, {
+        headers: getAuthHeaders(),
+    });
+    return response.json();
+};
+
+export const getInsightsTimeAnalytics = async (userId) => {
+    const response = await fetch(`${API_BASE}/insights/time-analytics/${userId}`, {
+        headers: getAuthHeaders(),
+    });
+    return response.json();
+};
+
+export const getInsightsAIReport = async (userId) => {
+    const response = await fetch(`${API_BASE}/insights/ai-report/${userId}`, {
+        headers: getAuthHeaders(),
+    });
+    return response.json();
+};
+
+// ========================
+// CONTEST APIs
+// ========================
+
+export const getContestBadges = async (userId) => {
+    const response = await fetch(`${API_BASE}/contests/user/${userId}/badges`, {
+        headers: getAuthHeaders(),
     });
     return response.json();
 };

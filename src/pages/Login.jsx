@@ -160,7 +160,7 @@ export default function Login({ setPage, setIsLoggedIn, setUserRole }) {
           <button
             type="button"
             className="lg-link"
-            onClick={() => alert("Forgot password flow (implement backend)")}
+            onClick={() => setPage("forgot-password")}
           >
             Forgot?
           </button>

@@ -6,10 +6,10 @@ dotenv.config();
 const router = express.Router();
 
 router.post("/", async (req, res) => {
-  const { difficulty, language } = req.body;
+  const { difficulty, language, problemType } = req.body;
 
   const prompt = `
-Generate a coding interview problem in JSON ONLY.
+Generate a coding interview problem in JSON ONLY for ${language}.
 Match this structure EXACTLY:
 
 {
@@ -21,8 +21,16 @@ Match this structure EXACTLY:
   "constraints": []
 }
 
-Difficulty: ${difficulty}
-Language focus: ${language}
+IMPORTANT REQUIREMENTS:
+- Difficulty: ${difficulty}
+- Programming Language: ${language}
+- Problem Type: ${problemType || 'General'}
+- Generate a problem that is SPECIFICALLY suited for ${language}
+- Use ${language} syntax in examples and descriptions
+- Make sure the problem showcases ${language} features and idioms
+- Examples should use ${language}-appropriate data structures and syntax
+
+Generate the problem now in valid JSON format only.
 `;
 
   try {
@@ -38,11 +46,13 @@ Language focus: ${language}
 
     let raw = apiRes.data.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
 
-    // Extract JSON safely
-    raw = raw.substring(raw.indexOf("{"), raw.lastIndexOf("}") + 1);
+    const firstBrace = raw.indexOf("{");
+    const lastBrace = raw.lastIndexOf("}");
+    if (firstBrace !== -1 && lastBrace !== -1) {
+      raw = raw.substring(firstBrace, lastBrace + 1);
+    }
 
     const json = JSON.parse(raw);
-
     res.json(json);
 
   } catch (err) {

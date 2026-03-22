@@ -7,52 +7,131 @@ const router = express.Router();
 // GET USER DASHBOARD STATS
 // ========================
 router.get("/stats/:userId", async (req, res) => {
+    // Prevent caching
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+
     try {
         const { userId } = req.params;
+        const parsedUserId = parseInt(userId);
 
-        const result = await query(
-            `SELECT 
-        id, full_name, email, profile_photo_url,
-        total_points, current_level, current_xp, xp_to_next_level,
-        current_streak, longest_streak,
-        problems_solved, total_submissions, accepted_submissions, accuracy_rate
-       FROM users WHERE id = $1`,
-            [userId]
-        );
+        console.log(`\n🔍 DASHBOARD: Fetching stats for user ID: ${parsedUserId}`);
 
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: "User not found" });
+        // Try to fetch user with all columns, fallback if some don't exist
+        let user;
+        try {
+            const result = await query(
+                `SELECT * FROM users WHERE id = $1`,
+                [parsedUserId]
+            );
+
+            if (result.rows.length === 0) {
+                return res.status(404).json({ error: "User not found" });
+            }
+
+            const row = result.rows[0];
+            user = {
+                id: row.id,
+                full_name: row.full_name,
+                email: row.email,
+                profile_photo_url: row.profile_photo_url,
+                total_points: parseInt(row.total_points) || 0,
+                current_level: row.current_level || 1,
+                current_xp: parseInt(row.current_xp) || 0,
+                xp_to_next_level: parseInt(row.xp_to_next_level) || 1000,
+                current_streak: parseInt(row.current_streak) || 0,
+                longest_streak: parseInt(row.longest_streak) || 0,
+                problems_solved: parseInt(row.problems_solved) || 0,
+                total_submissions: parseInt(row.total_submissions) || 0,
+                accepted_submissions: parseInt(row.accepted_submissions) || 0,
+                accuracy_rate: parseFloat(row.accuracy_rate) || 0,
+                experience_points: parseInt(row.experience_points) || 0
+            };
+
+            console.log("User stats fetched:", {
+                currentXp: user.current_xp,
+                totalPoints: user.total_points,
+                problemsSolved: user.problems_solved
+            });
+
+        } catch (colError) {
+            // Fallback query if some columns don't exist
+            console.error("Stats query error:", colError.message);
+            const result = await query(
+                `SELECT id, full_name, email, profile_photo_url FROM users WHERE id = $1`,
+                [parsedUserId]
+            );
+            if (result.rows.length === 0) {
+                return res.status(404).json({ error: "User not found" });
+            }
+            user = {
+                ...result.rows[0],
+                total_points: 0,
+                current_level: 1,
+                current_xp: 0,
+                xp_to_next_level: 1000,
+                current_streak: 0,
+                longest_streak: 0,
+                problems_solved: 0,
+                total_submissions: 0,
+                accepted_submissions: 0,
+                accuracy_rate: 0,
+                experience_points: 0
+            };
         }
 
-        const user = result.rows[0];
+        // Convert numeric level to string level name
+        const getLevelName = (level) => {
+            const numLevel = parseInt(level) || 1;
+            if (numLevel >= 50) return "Platinum";
+            if (numLevel >= 25) return "Gold";
+            if (numLevel >= 10) return "Silver";
+            return "Bronze";
+        };
 
         // Get earned badges count
-        const badgesResult = await query(
-            `SELECT COUNT(*) as count FROM user_badges WHERE user_id = $1 AND is_earned = TRUE`,
-            [userId]
-        );
+        let badgesCount = 0;
+        try {
+            const badgesResult = await query(
+                `SELECT COUNT(*) as count FROM user_badges WHERE user_id = $1 AND is_earned = TRUE`,
+                [parsedUserId]
+            );
+            badgesCount = parseInt(badgesResult.rows[0]?.count) || 0;
+        } catch { badgesCount = 0; }
 
         // Get user rank
-        const rankResult = await query(
-            `SELECT rank FROM (
-        SELECT id, RANK() OVER (ORDER BY total_points DESC) as rank
-        FROM users WHERE role = 'User'
-      ) ranked WHERE id = $1`,
-            [userId]
-        );
+        let rank = 0;
+        try {
+            const rankResult = await query(
+                `SELECT rank FROM (
+                    SELECT id, RANK() OVER (ORDER BY COALESCE(total_points, 0) DESC) as rank
+                    FROM users WHERE role = 'User'
+                ) ranked WHERE id = $1`,
+                [parsedUserId]
+            );
+            rank = parseInt(rankResult.rows[0]?.rank) || 0;
+        } catch { rank = 0; }
+
+        // Calculate XP progress percentage for the frontend
+        const currentXp = parseInt(user.current_xp) || 0;
+        const xpToNextLevel = parseInt(user.xp_to_next_level) || 1000;
+        const xpProgress = Math.min(100, Math.round((currentXp / xpToNextLevel) * 100));
 
         res.json({
             stats: {
-                problemsSolved: user.problems_solved || 0,
-                totalPoints: user.total_points || 0,
+                problemsSolved: parseInt(user.problems_solved) || 0,
+                totalPoints: parseInt(user.total_points) || 0,
                 accuracy: parseFloat(user.accuracy_rate) || 0,
-                currentLevel: user.current_level || "Bronze",
-                currentXp: user.current_xp || 0,
-                xpToNextLevel: user.xp_to_next_level || 1000,
-                currentStreak: user.current_streak || 0,
-                longestStreak: user.longest_streak || 0,
-                badgesEarned: parseInt(badgesResult.rows[0]?.count) || 0,
-                rank: parseInt(rankResult.rows[0]?.rank) || 0,
+                currentLevel: getLevelName(user.current_level),
+                currentXp: currentXp,
+                xpToNextLevel: xpToNextLevel,
+                xpProgress: xpProgress,
+                currentStreak: parseInt(user.current_streak) || 0,
+                longestStreak: parseInt(user.longest_streak) || 0,
+                badgesEarned: badgesCount,
+                rank: rank,
+                experiencePoints: parseInt(user.experience_points) || 0,
             },
             user: {
                 id: user.id,
@@ -64,6 +143,39 @@ router.get("/stats/:userId", async (req, res) => {
     } catch (error) {
         console.error("Stats fetch error:", error);
         res.status(500).json({ error: "Failed to fetch stats" });
+    }
+});
+
+// ========================
+// DEBUG: RAW DATABASE CHECK
+// ========================
+router.get("/debug/:userId", async (req, res) => {
+    try {
+        const parsedUserId = parseInt(req.params.userId);
+        console.log(`\n🔧 DEBUG: Checking raw database values for user ${parsedUserId}`);
+
+        const result = await query(
+            `SELECT id, full_name, total_points, problems_solved, current_xp, 
+                    experience_points, total_submissions, accepted_submissions 
+             FROM users WHERE id = $1`,
+            [parsedUserId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.json({ error: "User not found", userId: parsedUserId });
+        }
+
+        console.log(`🔧 DEBUG RAW DATA:`, result.rows[0]);
+
+        res.json({
+            message: "Raw database values",
+            userId: parsedUserId,
+            rawData: result.rows[0],
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        console.error("Debug error:", error);
+        res.status(500).json({ error: error.message });
     }
 });
 
@@ -219,21 +331,41 @@ router.get("/skills/:userId", async (req, res) => {
 router.put("/profile/:userId", async (req, res) => {
     try {
         const { userId } = req.params;
-        const { fullName, bio, location, github, linkedin, profilePhoto } = req.body;
+        const { fullName, bio, location, github, linkedin, profilePhoto, isPrivate } = req.body;
 
-        const result = await query(
-            `UPDATE users SET 
-         full_name = COALESCE($1, full_name),
-         bio = COALESCE($2, bio),
-         location = COALESCE($3, location),
-         github_url = COALESCE($4, github_url),
-         linkedin_url = COALESCE($5, linkedin_url),
-         profile_photo_url = COALESCE($6, profile_photo_url),
-         updated_at = NOW()
-       WHERE id = $7
-       RETURNING id, full_name, bio, location, github_url, linkedin_url, profile_photo_url`,
-            [fullName, bio, location, github, linkedin, profilePhoto, userId]
-        );
+        // Try update with is_private first, fallback if column doesn't exist
+        let result;
+        try {
+            result = await query(
+                `UPDATE users SET 
+             full_name = COALESCE($1, full_name),
+             bio = COALESCE($2, bio),
+             location = COALESCE($3, location),
+             github_url = COALESCE($4, github_url),
+             linkedin_url = COALESCE($5, linkedin_url),
+             profile_photo_url = COALESCE($6, profile_photo_url),
+             is_private = COALESCE($7, is_private),
+             updated_at = NOW()
+           WHERE id = $8
+           RETURNING id, full_name, bio, location, github_url, linkedin_url, profile_photo_url, is_private`,
+                [fullName, bio, location, github, linkedin, profilePhoto, isPrivate, userId]
+            );
+        } catch (colError) {
+            // Fallback query without is_private
+            result = await query(
+                `UPDATE users SET 
+             full_name = COALESCE($1, full_name),
+             bio = COALESCE($2, bio),
+             location = COALESCE($3, location),
+             github_url = COALESCE($4, github_url),
+             linkedin_url = COALESCE($5, linkedin_url),
+             profile_photo_url = COALESCE($6, profile_photo_url),
+             updated_at = NOW()
+           WHERE id = $7
+           RETURNING id, full_name, bio, location, github_url, linkedin_url, profile_photo_url`,
+                [fullName, bio, location, github, linkedin, profilePhoto, userId]
+            );
+        }
 
         if (result.rows.length === 0) {
             return res.status(404).json({ error: "User not found" });

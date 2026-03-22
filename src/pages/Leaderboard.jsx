@@ -5,6 +5,7 @@ import "../App.css";
 function Leaderboard() {
   const [activeTab, setActiveTab] = useState("leaderboard");
   const [timeFilter, setTimeFilter] = useState("all_time");
+  const [scope, setScope] = useState("global"); // global, friends
   const [leaderboardData, setLeaderboardData] = useState([]);
   const [topThree, setTopThree] = useState([]);
   const [userRank, setUserRank] = useState(0);
@@ -15,7 +16,7 @@ function Leaderboard() {
   const fetchLeaderboard = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await getLeaderboard(timeFilter, 50);
+      const data = await getLeaderboard(timeFilter, 50, scope);
       setLeaderboardData(data.leaderboard || []);
       setTopThree(data.topThree || []);
 
@@ -30,7 +31,7 @@ function Leaderboard() {
     } finally {
       setLoading(false);
     }
-  }, [timeFilter]);
+  }, [timeFilter, scope]);
 
   const fetchBadges = useCallback(async () => {
     try {
@@ -195,9 +196,35 @@ function Leaderboard() {
             </div>
           </div>
 
-          {/* GLOBAL LEADERBOARD */}
+          {/* GLOBAL/FRIENDS LEADERBOARD */}
           <div className="gl-header-row">
-            <h3 className="gl-title">Global Leaderboard</h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+              <h3 className="gl-title">{scope === 'friends' ? 'Friends Leaderboard' : 'Global Leaderboard'}</h3>
+              <div className="scope-tabs" style={{ display: 'flex', background: '#e2e8f0', borderRadius: '8px', padding: '4px' }}>
+                <button
+                  onClick={() => setScope('global')}
+                  style={{
+                    border: 'none', background: scope === 'global' ? 'white' : 'transparent',
+                    padding: '4px 12px', borderRadius: '6px', cursor: 'pointer',
+                    color: scope === 'global' ? '#2d3748' : '#718096', fontWeight: 'bold',
+                    boxShadow: scope === 'global' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                  }}
+                >
+                  Global
+                </button>
+                <button
+                  onClick={() => setScope('friends')}
+                  style={{
+                    border: 'none', background: scope === 'friends' ? 'white' : 'transparent',
+                    padding: '4px 12px', borderRadius: '6px', cursor: 'pointer',
+                    color: scope === 'friends' ? '#2d3748' : '#718096', fontWeight: 'bold',
+                    boxShadow: scope === 'friends' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                  }}
+                >
+                  Friends
+                </button>
+              </div>
+            </div>
             <div className="filter-bar">
               <button
                 className={`filter-btn ${timeFilter === "all_time" ? "active" : ""}`}

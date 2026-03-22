@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { getCurrentUser, getProfile, updateUserProfile, getUserProjects, getUserStats, getUserBadges, getUserSkills } from "../services/api";
+import { getCurrentUser, getProfile, updateUserProfile, getUserProjects, getUserStats, getUserBadges, getUserSkills, changePassword, deleteAccount, saveUserSettings, getUserSettings, getAllUsers, getFriends, getPendingConnections, sendConnectionRequest, acceptConnectionRequest } from "../services/api";
 import "../App.css";
 
 function ProfileSettings({ isDark, toggleTheme, setIsLoggedIn, setPage }) {
@@ -41,6 +41,17 @@ function ProfileSettings({ isDark, toggleTheme, setIsLoggedIn, setPage }) {
   const [githubConnected, setGithubConnected] = useState(false);
   const [googleConnected, setGoogleConnected] = useState(true);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteError, setDeleteError] = useState("");
+  const [deleting, setDeleting] = useState(false);
+
+  // Notification Settings
+  const [emailNotifications, setEmailNotifications] = useState(true);
+  const [dailyChallengeReminder, setDailyChallengeReminder] = useState(true);
+  const [achievementAlerts, setAchievementAlerts] = useState(true);
+  const [weeklyProgressReport, setWeeklyProgressReport] = useState(false);
+  const [collaborationNotifications, setCollaborationNotifications] = useState(true);
+  const [settingsSaving, setSettingsSaving] = useState(false);
 
   // Ref for file input
   const fileInputRef = useRef(null);
@@ -76,6 +87,14 @@ function ProfileSettings({ isDark, toggleTheme, setIsLoggedIn, setPage }) {
 
   // User skills from database
   const [skills, setSkills] = useState([]);
+
+  // Connections State
+  const [friends, setFriends] = useState([]);
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [searchResults, setSearchResults] = useState([]);
+  const [userSearchQuery, setUserSearchQuery] = useState("");
+  const [connectionTab, setConnectionTab] = useState("friends"); // friends, find
+  const [requestStatus, setRequestStatus] = useState({}); // To track sent requests status button
 
   // Load user data from API
   useEffect(() => {
@@ -125,8 +144,50 @@ function ProfileSettings({ isDark, toggleTheme, setIsLoggedIn, setPage }) {
         setBadges(badgesData.badges || []);
 
         // Fetch skills
+        // Fetch skills
         const skillsData = await getUserSkills(currentUser.id);
         setSkills(skillsData.skills || []);
+
+        // Fetch Connections data
+        try {
+          const friendsData = await getFriends();
+          setFriends(friendsData || []);
+
+          const pendingData = await getPendingConnections();
+          setPendingRequests(pendingData || []);
+        } catch (err) {
+          console.error("Failed to load connections", err);
+        }
+
+        // Set Privacy from DB
+        if (data.user && data.user.isPrivate !== undefined) {
+          setProfileVisibility(data.user.isPrivate ? "Private" : "Public");
+        }
+
+        // Load settings from localStorage
+        const savedSettings = localStorage.getItem(`codegenius_settings_${currentUser.id}`);
+        if (savedSettings) {
+          const settings = JSON.parse(savedSettings);
+          // Personalization settings
+          if (settings.language) setLanguage(settings.language);
+          if (settings.editorTheme) setEditorTheme(settings.editorTheme);
+          if (settings.fontSize) setFontSize(settings.fontSize);
+          if (settings.defaultLanguage) setDefaultLanguage(settings.defaultLanguage);
+          if (settings.explanationLevel) setExplanationLevel(settings.explanationLevel);
+          if (settings.profileVisibility) setProfileVisibility(settings.profileVisibility);
+          // Editor preferences
+          if (settings.lineNumbers !== undefined) setLineNumbers(settings.lineNumbers);
+          if (settings.wordWrap !== undefined) setWordWrap(settings.wordWrap);
+          if (settings.tabSize) setTabSize(settings.tabSize);
+          if (settings.autoSave !== undefined) setAutoSave(settings.autoSave);
+          if (settings.autoComplete !== undefined) setAutoComplete(settings.autoComplete);
+          // Notification settings
+          if (settings.emailNotifications !== undefined) setEmailNotifications(settings.emailNotifications);
+          if (settings.dailyChallengeReminder !== undefined) setDailyChallengeReminder(settings.dailyChallengeReminder);
+          if (settings.achievementAlerts !== undefined) setAchievementAlerts(settings.achievementAlerts);
+          if (settings.weeklyProgressReport !== undefined) setWeeklyProgressReport(settings.weeklyProgressReport);
+          if (settings.collaborationNotifications !== undefined) setCollaborationNotifications(settings.collaborationNotifications);
+        }
 
       } catch (error) {
         console.error("Failed to fetch user data:", error);
@@ -179,8 +240,14 @@ function ProfileSettings({ isDark, toggleTheme, setIsLoggedIn, setPage }) {
       const currentUser = getCurrentUser();
       if (!currentUser) return;
 
-      // TODO: Add actual API call to change password
-      // For now, just simulate success
+      // Call the actual API to change password
+      const result = await changePassword(currentUser.id, passwordData.currentPassword, passwordData.newPassword);
+
+      if (result.error) {
+        setPasswordError(result.error);
+        return;
+      }
+
       setPasswordSuccess("Password changed successfully!");
       setPasswordData({
         currentPassword: "",
@@ -200,6 +267,105 @@ function ProfileSettings({ isDark, toggleTheme, setIsLoggedIn, setPage }) {
     localStorage.removeItem("user");
     setIsLoggedIn(false);
     setPage("home");
+  };
+
+  // Save all settings to localStorage
+  const saveSettings = () => {
+    const currentUser = getCurrentUser();
+    if (!currentUser) return;
+
+    const settings = {
+      // Personalization
+      language,
+      editorTheme,
+      fontSize,
+      defaultLanguage,
+      explanationLevel,
+      profileVisibility,
+      // Editor preferences
+      lineNumbers,
+      wordWrap,
+      tabSize,
+      autoSave,
+      autoComplete,
+      // Notifications
+      emailNotifications,
+      dailyChallengeReminder,
+      achievementAlerts,
+      weeklyProgressReport,
+      collaborationNotifications
+    };
+
+    localStorage.setItem(`codegenius_settings_${currentUser.id}`, JSON.stringify(settings));
+  };
+
+  // Auto-save settings whenever they change
+  useEffect(() => {
+    const currentUser = getCurrentUser();
+    if (currentUser && !loading) {
+      saveSettings();
+    }
+  }, [language, editorTheme, fontSize, defaultLanguage, explanationLevel, profileVisibility,
+    lineNumbers, wordWrap, tabSize, autoSave, autoComplete,
+    emailNotifications, dailyChallengeReminder, achievementAlerts, weeklyProgressReport, collaborationNotifications]);
+
+  // Handle delete account
+  const handleDeleteAccount = async () => {
+    if (!deletePassword) {
+      setDeleteError("Please enter your password to confirm deletion");
+      return;
+    }
+
+    const currentUser = getCurrentUser();
+    if (!currentUser) return;
+
+    setDeleting(true);
+    setDeleteError("");
+
+    try {
+      const result = await deleteAccount(currentUser.id, deletePassword);
+
+      if (result.error) {
+        setDeleteError(result.error);
+        setDeleting(false);
+        return;
+      }
+
+      // Account deleted successfully - log out
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      localStorage.removeItem(`codegenius_settings_${currentUser.id}`);
+      setIsLoggedIn(false);
+      setPage("home");
+    } catch (error) {
+      setDeleteError("Failed to delete account. Please try again.");
+      setDeleting(false);
+    }
+  };
+
+  // Handle export user data
+  const handleExportData = () => {
+    const currentUser = getCurrentUser();
+    if (!currentUser) return;
+
+    const exportData = {
+      profile: profileData,
+      stats: stats,
+      projects: userProjects,
+      skills: skills,
+      badges: badges,
+      exportedAt: new Date().toISOString()
+    };
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `codegenius_data_${currentUser.id}_${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   const handleSaveProfile = async () => {
@@ -251,6 +417,23 @@ function ProfileSettings({ isDark, toggleTheme, setIsLoggedIn, setPage }) {
     }
   };
 
+  const handleVisibilityChange = async (e) => {
+    const visibility = e.target.value;
+    setProfileVisibility(visibility);
+
+    const currentUser = getCurrentUser();
+    if (currentUser) {
+      try {
+        await updateUserProfile(currentUser.id, {
+          isPrivate: visibility === "Private"
+        });
+        console.log("Profile visibility saved successfully");
+      } catch (error) {
+        console.error("Failed to save profile visibility:", error);
+      }
+    }
+  };
+
   // Group projects by category
   const groupedProjects = userProjects.reduce((acc, project) => {
     const category = project.category || "Other";
@@ -292,7 +475,94 @@ function ProfileSettings({ isDark, toggleTheme, setIsLoggedIn, setPage }) {
     return icons[name] || "🏅";
   };
 
-  // Get badge background class
+  // Connections Handlers
+  const handleSearchUsers = async (searchQuery) => {
+    // Use provided query or empty string for suggestions
+    const query = typeof searchQuery === 'string' ? searchQuery.trim() : '';
+
+    try {
+      const results = await getAllUsers(query);
+      // Ensure results is always an array
+      if (Array.isArray(results)) {
+        setSearchResults(results);
+      } else if (results && Array.isArray(results.users)) {
+        setSearchResults(results.users);
+      } else {
+        console.error("Unexpected API response:", results);
+        setSearchResults([]);
+      }
+    } catch (error) {
+      console.error("Search failed:", error);
+      setSearchResults([]);
+    }
+  };
+
+  // Load suggested users when entering Find tab
+  const loadSuggestedUsers = async () => {
+    try {
+      const results = await getAllUsers("");
+      if (Array.isArray(results)) {
+        setSearchResults(results);
+      } else if (results && Array.isArray(results.users)) {
+        setSearchResults(results.users);
+      } else {
+        setSearchResults([]);
+      }
+    } catch (error) {
+      console.error("Failed to load suggestions:", error);
+      setSearchResults([]);
+    }
+  };
+
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (userSearchQuery) {
+        handleSearchUsers(userSearchQuery);
+      } else {
+        setSearchResults([]);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [userSearchQuery]);
+
+  const handleSendConnection = async (receiverId) => {
+    try {
+      setRequestStatus(prev => ({ ...prev, [receiverId]: 'sending' }));
+      const response = await sendConnectionRequest(receiverId);
+
+      if (response.error) {
+        alert(response.error);
+        setRequestStatus(prev => ({ ...prev, [receiverId]: 'failed' }));
+      } else {
+        // Update local UI state
+        setRequestStatus(prev => ({ ...prev, [receiverId]: 'sent' }));
+        // Refresh search results to show updated status
+        if (userSearchQuery) {
+          handleSearchUsers(userSearchQuery);
+        } else {
+          loadSuggestedUsers();
+        }
+      }
+    } catch (error) {
+      console.error("Connection request failed:", error);
+      setRequestStatus(prev => ({ ...prev, [receiverId]: 'failed' }));
+    }
+  };
+
+  const handleAcceptConnection = async (connectionId) => {
+    try {
+      await acceptConnectionRequest(connectionId);
+      // Refresh lists
+      const friendsData = await getFriends();
+      setFriends(friendsData || []);
+      const pendingData = await getPendingConnections();
+      setPendingRequests(pendingData || []);
+    } catch (error) {
+      console.error("Accept failed:", error);
+    }
+  };
+
   const getBadgeBgClass = (color) => {
     const classes = {
       bronze: "bronze-bg",
@@ -568,7 +838,7 @@ function ProfileSettings({ isDark, toggleTheme, setIsLoggedIn, setPage }) {
                       <select
                         className="meta-select"
                         value={profileVisibility}
-                        onChange={(e) => setProfileVisibility(e.target.value)}
+                        onChange={handleVisibilityChange}
                       >
                         <option value="Public">Public</option>
                         <option value="Friends Only">Friends Only</option>
@@ -729,7 +999,10 @@ function ProfileSettings({ isDark, toggleTheme, setIsLoggedIn, setPage }) {
                       <div className="meta-item-left">
                         <span className="meta-item-text">Email Notifications</span>
                       </div>
-                      <button className="toggle-switch active">
+                      <button
+                        className={`toggle-switch ${emailNotifications ? "active" : ""}`}
+                        onClick={() => setEmailNotifications(!emailNotifications)}
+                      >
                         <span className="toggle-slider" />
                       </button>
                     </div>
@@ -738,7 +1011,10 @@ function ProfileSettings({ isDark, toggleTheme, setIsLoggedIn, setPage }) {
                       <div className="meta-item-left">
                         <span className="meta-item-text">Daily Challenge Reminder</span>
                       </div>
-                      <button className="toggle-switch active">
+                      <button
+                        className={`toggle-switch ${dailyChallengeReminder ? "active" : ""}`}
+                        onClick={() => setDailyChallengeReminder(!dailyChallengeReminder)}
+                      >
                         <span className="toggle-slider" />
                       </button>
                     </div>
@@ -747,7 +1023,10 @@ function ProfileSettings({ isDark, toggleTheme, setIsLoggedIn, setPage }) {
                       <div className="meta-item-left">
                         <span className="meta-item-text">Achievement Alerts</span>
                       </div>
-                      <button className="toggle-switch active">
+                      <button
+                        className={`toggle-switch ${achievementAlerts ? "active" : ""}`}
+                        onClick={() => setAchievementAlerts(!achievementAlerts)}
+                      >
                         <span className="toggle-slider" />
                       </button>
                     </div>
@@ -756,7 +1035,10 @@ function ProfileSettings({ isDark, toggleTheme, setIsLoggedIn, setPage }) {
                       <div className="meta-item-left">
                         <span className="meta-item-text">Weekly Progress Report</span>
                       </div>
-                      <button className="toggle-switch">
+                      <button
+                        className={`toggle-switch ${weeklyProgressReport ? "active" : ""}`}
+                        onClick={() => setWeeklyProgressReport(!weeklyProgressReport)}
+                      >
                         <span className="toggle-slider" />
                       </button>
                     </div>
@@ -765,7 +1047,10 @@ function ProfileSettings({ isDark, toggleTheme, setIsLoggedIn, setPage }) {
                       <div className="meta-item-left">
                         <span className="meta-item-text">Project Collaboration Request</span>
                       </div>
-                      <button className="toggle-switch active">
+                      <button
+                        className={`toggle-switch ${collaborationNotifications ? "active" : ""}`}
+                        onClick={() => setCollaborationNotifications(!collaborationNotifications)}
+                      >
                         <span className="toggle-slider" />
                       </button>
                     </div>
@@ -886,7 +1171,7 @@ function ProfileSettings({ isDark, toggleTheme, setIsLoggedIn, setPage }) {
                   <div className="meta-settings-group">
                     <div
                       className="meta-settings-item"
-                      onClick={() => alert('Exporting your data... This feature will be available soon.')}
+                      onClick={handleExportData}
                     >
                       <span className="meta-item-text">Export My Data</span>
                       <span className="meta-arrow">›</span>
@@ -907,21 +1192,35 @@ function ProfileSettings({ isDark, toggleTheme, setIsLoggedIn, setPage }) {
                     ) : (
                       <div className="meta-delete-confirm">
                         <p>Are you sure you want to delete your account? This action cannot be undone.</p>
+                        <input
+                          type="password"
+                          placeholder="Enter your password to confirm"
+                          className="meta-input"
+                          value={deletePassword}
+                          onChange={(e) => setDeletePassword(e.target.value)}
+                          style={{ marginBottom: '10px' }}
+                        />
+                        {deleteError && (
+                          <div className="meta-error" style={{ marginBottom: '10px' }}>{deleteError}</div>
+                        )}
                         <div className="meta-delete-actions">
                           <button
                             className="meta-cancel-btn"
-                            onClick={() => setShowDeleteConfirm(false)}
+                            onClick={() => {
+                              setShowDeleteConfirm(false);
+                              setDeletePassword("");
+                              setDeleteError("");
+                            }}
+                            disabled={deleting}
                           >
                             Cancel
                           </button>
                           <button
                             className="meta-delete-btn"
-                            onClick={() => {
-                              alert('Account deletion requested. This feature will be available soon.');
-                              setShowDeleteConfirm(false);
-                            }}
+                            onClick={handleDeleteAccount}
+                            disabled={deleting}
                           >
-                            Delete Account
+                            {deleting ? "Deleting..." : "Delete Account"}
                           </button>
                         </div>
                       </div>
@@ -941,9 +1240,8 @@ function ProfileSettings({ isDark, toggleTheme, setIsLoggedIn, setPage }) {
         Manage your account information and track your coding progress.
       </p>
 
-      {/* TABS */}
       <div className="profile-tabs">
-        {["profile", "statistics", "submissions", "achievements"].map((tab) => (
+        {["profile", "statistics", "submissions", "achievements", "connections"].map((tab) => (
           <button
             key={tab}
             className={`p-tab ${activeTab === tab ? "active" : ""}`}
@@ -965,146 +1263,165 @@ function ProfileSettings({ isDark, toggleTheme, setIsLoggedIn, setPage }) {
 
       {/* ================= PROFILE TAB ================= */}
       {activeTab === "profile" && (
-        <div className="profile-layout">
-          {/* LEFT */}
-          <div className="profile-left">
-            <div className="profile-pic-box">
-              <div className="profile-pic-wrapper">
+        <div className="instagram-profile">
+          {/* Header Row with Edit Button on Right */}
+          <div className="ig-header-actions">
+            <h2 className="ig-page-title">My Profile</h2>
+            <button
+              className="ig-edit-btn"
+              onClick={() => setIsEditing(!isEditing)}
+            >
+              {isEditing ? "✕ Cancel" : "✏️ Edit Profile"}
+            </button>
+          </div>
+
+          {/* Main Profile Card */}
+          <div className="ig-profile-card">
+            {/* Left: Avatar */}
+            <div className="ig-avatar-section">
+              <div className="ig-avatar-wrapper" onClick={() => fileInputRef.current.click()}>
                 {profilePhoto ? (
-                  <img
-                    src={profilePhoto}
-                    alt="profile"
-                    className="profile-pic"
-                  />
+                  <img src={profilePhoto} alt="profile" className="ig-avatar" />
                 ) : (
-                  <div className="profile-pic-placeholder">
+                  <div className="ig-avatar-placeholder">
                     {profileData.fullName ? profileData.fullName.charAt(0).toUpperCase() : "?"}
                   </div>
                 )}
-                <button
-                  className="change-photo-btn"
-                  onClick={() => fileInputRef.current.click()}
-                  title="Change Profile Photo"
-                >
-                  📷
-                </button>
-              </div>
-              <h2>{profileData.fullName || "User"}</h2>
-              <p className="email-text">{profileData.email}</p>
-              <span className="level-badge">{stats.currentLevel} Level</span>
-
-              <div className="stats-box">
-                <div>
-                  <h2>{stats.problemsSolved}</h2>
-                  <p>Problems Solved</p>
-                </div>
-                <div>
-                  <h2>{stats.accuracy}%</h2>
-                  <p>Accuracy</p>
+                <div className="ig-avatar-overlay">
+                  <span>📷</span>
                 </div>
               </div>
+              <span className="ig-level-badge">{stats.currentLevel} Level</span>
+            </div>
 
-              <p className="progress-title">Progress to Next Level</p>
-              <div className="progress-bar">
-                <div className="progress-fill" style={{ width: `${(stats.currentXp / stats.xpToNextLevel) * 100}%` }} />
+            {/* Right: Info */}
+            <div className="ig-profile-info">
+              <h2 className="ig-username">{profileData.fullName || "User"}</h2>
+              <p className="ig-email">{profileData.email}</p>
+
+              {/* Stats */}
+              <div className="ig-stats-row">
+                <div className="ig-stat">
+                  <span className="ig-stat-value">{stats.problemsSolved}</span>
+                  <span className="ig-stat-label">Problems</span>
+                </div>
+                <div className="ig-stat">
+                  <span className="ig-stat-value">{stats.accuracy}%</span>
+                  <span className="ig-stat-label">Accuracy</span>
+                </div>
+                <div className="ig-stat">
+                  <span className="ig-stat-value">{friends.length}</span>
+                  <span className="ig-stat-label">Friends</span>
+                </div>
+                <div className="ig-stat">
+                  <span className="ig-stat-value">{stats.totalPoints}</span>
+                  <span className="ig-stat-label">Points</span>
+                </div>
               </div>
-              <small>{stats.currentXp} / {stats.xpToNextLevel} XP</small>
+
+              {/* XP Progress */}
+              <div className="ig-xp-section">
+                <div className="ig-xp-header">
+                  <span>Progress to Next Level</span>
+                  <span>{stats.currentXp} / {stats.xpToNextLevel} XP</span>
+                </div>
+                <div className="ig-progress-bar">
+                  <div className="ig-progress-fill" style={{ width: `${(stats.currentXp / stats.xpToNextLevel) * 100}%` }} />
+                </div>
+              </div>
+
+              {/* Quick Links */}
+              {(profileData.github || profileData.linkedin || profileData.location) && !isEditing && (
+                <div className="ig-quick-info">
+                  {profileData.location && <span className="ig-info-tag">📍 {profileData.location}</span>}
+                  {profileData.github && (
+                    <a href={profileData.github.startsWith('http') ? profileData.github : `https://${profileData.github}`} target="_blank" rel="noopener noreferrer" className="ig-info-tag ig-link-tag">
+                      GitHub
+                    </a>
+                  )}
+                  {profileData.linkedin && (
+                    <a href={profileData.linkedin.startsWith('http') ? profileData.linkedin : `https://${profileData.linkedin}`} target="_blank" rel="noopener noreferrer" className="ig-info-tag ig-link-tag">
+                      LinkedIn
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
-          {/* RIGHT */}
-          <div className="profile-right">
-            <div className="info-card">
-              <div className="info-header">
-                <h3>Personal Information</h3>
-                {isEditing ? (
-                  <button className="save-btn" onClick={handleSaveProfile} disabled={saving}>
-                    {saving ? "Saving..." : "💾 Save"}
-                  </button>
-                ) : (
-                  <button className="edit-btn-pro" onClick={() => setIsEditing(true)}>✏️ Edit</button>
-                )}
-              </div>
-
-              <div className="info-grid">
-                <div className="info-item">
+          {/* Edit Form */}
+          {isEditing && (
+            <div className="ig-edit-form">
+              <h3 className="ig-form-title">Edit Profile Information</h3>
+              <div className="ig-form-grid">
+                <div className="ig-form-group">
                   <label>Full Name</label>
-                  {isEditing ? (
-                    <input
-                      type="text"
-                      className="edit-input"
-                      value={profileData.fullName}
-                      onChange={(e) => setProfileData({ ...profileData, fullName: e.target.value })}
-                    />
-                  ) : (
-                    <p>{profileData.fullName || "Not set"}</p>
-                  )}
+                  <input
+                    type="text"
+                    value={profileData.fullName}
+                    onChange={(e) => setProfileData({ ...profileData, fullName: e.target.value })}
+                    placeholder="Your full name"
+                  />
                 </div>
-
-                <div className="info-item">
+                <div className="ig-form-group">
                   <label>Email</label>
-                  <p>{profileData.email}</p>
+                  <input
+                    type="email"
+                    value={profileData.email}
+                    disabled
+                    className="ig-input-disabled"
+                  />
                 </div>
-
-                <div className="info-item full">
-                  <label>Bio</label>
-                  {isEditing ? (
-                    <textarea
-                      className="edit-textarea"
-                      value={profileData.bio}
-                      onChange={(e) => setProfileData({ ...profileData, bio: e.target.value })}
-                      placeholder="Tell us about yourself..."
-                    />
-                  ) : (
-                    <p>{profileData.bio || "No bio yet"}</p>
-                  )}
-                </div>
-
-                <div className="info-item">
+                <div className="ig-form-group">
                   <label>Location</label>
-                  {isEditing ? (
-                    <input
-                      type="text"
-                      className="edit-input"
-                      value={profileData.location}
-                      onChange={(e) => setProfileData({ ...profileData, location: e.target.value })}
-                      placeholder="City, Country"
-                    />
-                  ) : (
-                    <p>{profileData.location || "Not set"}</p>
-                  )}
+                  <input
+                    type="text"
+                    value={profileData.location}
+                    onChange={(e) => setProfileData({ ...profileData, location: e.target.value })}
+                    placeholder="City, Country"
+                  />
                 </div>
-
-                <div className="info-item">
-                  <label>GitHub</label>
-                  {isEditing ? (
-                    <input
-                      type="text"
-                      className="edit-input"
-                      value={profileData.github}
-                      onChange={(e) => setProfileData({ ...profileData, github: e.target.value })}
-                      placeholder="github.com/username"
-                    />
-                  ) : (
-                    <p>{profileData.github || "Not set"}</p>
-                  )}
+                <div className="ig-form-group">
+                  <label>GitHub URL</label>
+                  <input
+                    type="text"
+                    value={profileData.github}
+                    onChange={(e) => setProfileData({ ...profileData, github: e.target.value })}
+                    placeholder="github.com/username"
+                  />
                 </div>
-
-                <div className="info-item">
-                  <label>LinkedIn</label>
-                  {isEditing ? (
-                    <input
-                      type="text"
-                      className="edit-input"
-                      value={profileData.linkedin}
-                      onChange={(e) => setProfileData({ ...profileData, linkedin: e.target.value })}
-                      placeholder="linkedin.com/in/username"
-                    />
-                  ) : (
-                    <p>{profileData.linkedin || "Not set"}</p>
-                  )}
+                <div className="ig-form-group">
+                  <label>LinkedIn URL</label>
+                  <input
+                    type="text"
+                    value={profileData.linkedin}
+                    onChange={(e) => setProfileData({ ...profileData, linkedin: e.target.value })}
+                    placeholder="linkedin.com/in/username"
+                  />
                 </div>
               </div>
+              <div className="ig-form-actions">
+                <button className="ig-cancel-btn" onClick={() => setIsEditing(false)}>Cancel</button>
+                <button className="ig-save-btn" onClick={handleSaveProfile} disabled={saving}>
+                  {saving ? "Saving..." : "💾 Save Changes"}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Highlights Row */}
+          <div className="ig-highlights">
+            <div className="ig-highlight-item">
+              <div className="ig-highlight-circle">🔥</div>
+              <span>{stats.currentStreak} Day Streak</span>
+            </div>
+            <div className="ig-highlight-item">
+              <div className="ig-highlight-circle">🏆</div>
+              <span>{badges.filter(b => b.isEarned).length} Badges</span>
+            </div>
+            <div className="ig-highlight-item">
+              <div className="ig-highlight-circle">📁</div>
+              <span>{userProjects.length} Projects</span>
             </div>
           </div>
         </div>
@@ -1313,6 +1630,255 @@ function ProfileSettings({ isDark, toggleTheme, setIsLoggedIn, setPage }) {
               </>
             )}
           </div>
+        </div>
+      )}
+
+      {/* ================= CONNECTIONS TAB ================= */}
+      {activeTab === "connections" && (
+        <div className="connections-container" style={{ padding: '20px' }}>
+          <div className="connections-header" style={{ marginBottom: '24px' }}>
+            <h3>👥 Connections</h3>
+            <div className="connection-sub-tabs" style={{ display: 'flex', gap: '15px', marginTop: '15px', borderBottom: '1px solid #333' }}>
+              <button
+                className={`sub-tab-btn ${connectionTab === 'friends' ? 'active' : ''}`}
+                onClick={() => setConnectionTab('friends')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  borderBottom: connectionTab === 'friends' ? '2px solid #667eea' : 'none',
+                  color: connectionTab === 'friends' ? '#667eea' : 'inherit',
+                  padding: '10px 15px',
+                  cursor: 'pointer',
+                  fontWeight: 'bold'
+                }}
+              >
+                My Connections
+              </button>
+              <button
+                className={`sub-tab-btn ${connectionTab === 'requests' ? 'active' : ''}`}
+                onClick={() => setConnectionTab('requests')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  borderBottom: connectionTab === 'requests' ? '2px solid #667eea' : 'none',
+                  color: connectionTab === 'requests' ? '#667eea' : 'inherit',
+                  padding: '10px 15px',
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                  position: 'relative'
+                }}
+              >
+                Requests
+                {pendingRequests.length > 0 && (
+                  <span style={{
+                    position: 'absolute',
+                    top: '0',
+                    right: '-5px',
+                    background: '#e53e3e',
+                    color: 'white',
+                    borderRadius: '50%',
+                    width: '20px',
+                    height: '20px',
+                    fontSize: '0.75rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>{pendingRequests.length}</span>
+                )}
+              </button>
+              <button
+                className={`sub-tab-btn ${connectionTab === 'find' ? 'active' : ''}`}
+                onClick={() => setConnectionTab('find')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  borderBottom: connectionTab === 'find' ? '2px solid #667eea' : 'none',
+                  color: connectionTab === 'find' ? '#667eea' : 'inherit',
+                  padding: '10px 15px',
+                  cursor: 'pointer',
+                  fontWeight: 'bold'
+                }}
+              >
+                Find People
+              </button>
+            </div>
+          </div>
+
+          {connectionTab === 'friends' && (
+            <div className="friends-view">
+              <h4 style={{ marginBottom: '15px' }}>My Connections ({friends.length})</h4>
+              {friends.length > 0 ? (
+                <div className="friends-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
+                  {friends.map(friend => (
+                    <div key={friend.id} className="user-card" style={{
+                      padding: '15px', borderRadius: '10px', backgroundColor: isDark ? '#2d3748' : '#f7fafc',
+                      display: 'flex', alignItems: 'center', gap: '15px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
+                    }}>
+                      <img
+                        src={friend.profile_photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(friend.full_name)}&background=random`}
+                        alt={friend.full_name}
+                        style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover' }}
+                      />
+                      <div>
+                        <h5 style={{ margin: '0 0 5px 0', fontSize: '1rem' }}>{friend.full_name}</h5>
+                        <small style={{ color: '#718096' }}>{friend.current_level} • {friend.total_points} pts</small>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="empty-state" style={{ textAlign: 'center', padding: '40px', color: '#718096' }}>
+                  <div style={{ fontSize: '3rem', marginBottom: '15px' }}>👥</div>
+                  <p>You haven't connected with anyone yet.</p>
+                  <button
+                    onClick={() => setConnectionTab('find')}
+                    style={{
+                      marginTop: '15px', padding: '8px 20px', background: '#667eea', color: 'white',
+                      border: 'none', borderRadius: '5px', cursor: 'pointer'
+                    }}
+                  >
+                    Find Friends
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {connectionTab === 'requests' && (
+            <div className="requests-view">
+              <h4 style={{ marginBottom: '20px' }}>Connection Requests ({pendingRequests.length})</h4>
+              {pendingRequests.length > 0 ? (
+                <div className="requests-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
+                  {pendingRequests.map(req => (
+                    <div key={req.id} className="user-card" style={{
+                      padding: '20px', borderRadius: '12px', backgroundColor: isDark ? '#2d3748' : '#f7fafc',
+                      display: 'flex', alignItems: 'center', gap: '15px', boxShadow: '0 3px 10px rgba(0,0,0,0.1)'
+                    }}>
+                      <img
+                        src={req.profile_photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(req.full_name)}&background=random`}
+                        alt={req.full_name}
+                        style={{ width: '60px', height: '60px', borderRadius: '50%', objectFit: 'cover' }}
+                      />
+                      <div style={{ flex: 1 }}>
+                        <h5 style={{ margin: '0 0 8px 0', fontSize: '1.1rem' }}>{req.full_name}</h5>
+                        <p style={{ margin: '0 0 10px 0', fontSize: '0.85rem', color: '#718096' }}>
+                          Wants to connect with you
+                        </p>
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                          <button
+                            onClick={() => handleAcceptConnection(req.id)}
+                            style={{
+                              padding: '8px 16px', background: '#48bb78', color: 'white', border: 'none',
+                              borderRadius: '6px', cursor: 'pointer', fontSize: '0.9rem', fontWeight: '600'
+                            }}
+                          >
+                            ✓ Accept
+                          </button>
+                          <button
+                            style={{
+                              padding: '8px 16px', background: 'transparent', color: '#718096', border: '1px solid #cbd5e0',
+                              borderRadius: '6px', cursor: 'pointer', fontSize: '0.9rem'
+                            }}
+                          >
+                            ✕ Ignore
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="empty-state" style={{ textAlign: 'center', padding: '60px', color: '#718096' }}>
+                  <div style={{ fontSize: '4rem', marginBottom: '20px' }}>📬</div>
+                  <h4 style={{ margin: '0 0 10px 0' }}>No Pending Requests</h4>
+                  <p>When someone sends you a connection request, it will appear here.</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {connectionTab === 'find' && (
+            <div className="find-view">
+              <div className="search-bar" style={{ marginBottom: '25px', position: 'relative' }}>
+                <input
+                  type="text"
+                  placeholder="Search for developers..."
+                  value={userSearchQuery}
+                  onChange={(e) => setUserSearchQuery(e.target.value)}
+                  style={{
+                    width: '100%', padding: '12px 20px', borderRadius: '8px', border: '1px solid #cbd5e0',
+                    backgroundColor: isDark ? '#2d3748' : 'white', color: isDark ? 'white' : 'black', fontSize: '1rem'
+                  }}
+                />
+              </div>
+
+              <div className="results-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
+                {searchResults.map(user => (
+                  <div key={user.id} className="user-card" style={{
+                    padding: '15px', borderRadius: '10px', backgroundColor: isDark ? '#2d3748' : '#f7fafc',
+                    display: 'flex', alignItems: 'center', gap: '15px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
+                  }}>
+                    <img
+                      src={user.profile_photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.full_name)}&background=random`}
+                      alt={user.full_name}
+                      style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover' }}
+                    />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <h5 style={{ margin: '0 0 5px 0', fontSize: '1rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.full_name}</h5>
+                      <span className="level-badge" style={{ fontSize: '0.75rem', padding: '2px 8px', borderRadius: '10px', background: '#4a5568', color: 'white' }}>
+                        {user.current_level}
+                      </span>
+                    </div>
+
+                    {user.connection_status === 'accepted' ? (
+                      <span style={{ color: '#48bb78', fontWeight: 'bold', fontSize: '0.9rem' }}>✓ Friend</span>
+                    ) : user.connection_status === 'pending' && user.requester_id === getCurrentUser()?.id ? (
+                      <span style={{ color: '#ecc94b', fontWeight: 'bold', fontSize: '0.9rem' }}>Pending</span>
+                    ) : user.connection_status === 'pending' ? (
+                      <button
+                        onClick={() => setConnectionTab('friends')}
+                        style={{ padding: '6px 14px', background: '#ecc94b', color: 'black', border: 'none', borderRadius: '5px', cursor: 'pointer' }}
+                      >
+                        Respond
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleSendConnection(user.id)}
+                        disabled={requestStatus[user.id] === 'sent' || requestStatus[user.id] === 'sending'}
+                        style={{
+                          padding: '6px 14px',
+                          background: requestStatus[user.id] === 'sent' ? '#48bb78' : '#667eea',
+                          color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer',
+                          opacity: requestStatus[user.id] === 'sent' ? 0.8 : 1
+                        }}
+                      >
+                        {requestStatus[user.id] === 'sent' ? 'Sent' : requestStatus[user.id] === 'sending' ? 'Sending...' : 'Connect'}
+                      </button>
+                    )}
+                  </div>
+                ))}
+
+                {searchResults.length === 0 && userSearchQuery && (
+                  <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '20px', color: '#718096' }}>
+                    No users found matching "{userSearchQuery}"
+                  </div>
+                )}
+
+                {searchResults.length === 0 && !userSearchQuery && (
+                  <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '40px', color: '#718096' }}>
+                    Type a name to search for other developers.
+                    <br />
+                    <button
+                      onClick={loadSuggestedUsers}
+                      style={{ marginTop: '10px', color: '#667eea', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
+                    >
+                      Show suggestions
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
