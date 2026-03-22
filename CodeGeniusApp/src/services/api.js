@@ -4,7 +4,7 @@ import * as SecureStore from 'expo-secure-store';
 // Change this to your backend URL
 // For local development, use your computer's IP address (not localhost)
 // Get your IP by running: ipconfig (Windows) or ifconfig (Mac/Linux)
-const API_BASE_URL = 'http://192.168.1.106:4000/api';
+const API_BASE_URL = 'http://10.71.95.47:4000/api';
 
 const api = axios.create({
     baseURL: API_BASE_URL,

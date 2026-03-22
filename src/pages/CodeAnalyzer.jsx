@@ -7,7 +7,7 @@ import "prismjs/components/prism-java";
 import "prismjs/components/prism-c";
 import "prismjs/components/prism-cpp";
 import "../App.css";
-import { getCurrentUser } from "../services/api";
+import { getCurrentUser, API_SERVER } from "../services/api";
 import { copyWithToast, checkLanguageMismatch, detectLanguage } from "../utils/codeUtils";
 
 // Styled Explanation Component - Line by line explanation
@@ -486,7 +486,7 @@ export default function CodeAnalyzer() {
     const currentUser = getCurrentUser();
 
     try {
-      const response = await fetch("http://localhost:4000/api/analyze", {
+      const response = await fetch(`${API_SERVER}/api/analyze`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

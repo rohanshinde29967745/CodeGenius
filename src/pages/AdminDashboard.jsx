@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { getAdminStats, getAdminActivity, getPopularProblems } from "../services/api";
+import { getAdminStats, getAdminActivity, getPopularProblems, API_SERVER } from "../services/api";
 import "../App.css";
 
 function AdminDashboard({ onLogout, isDark, toggleTheme }) {
@@ -58,7 +58,7 @@ function AdminDashboard({ onLogout, isDark, toggleTheme }) {
 
   const handleExportData = async () => {
     try {
-      const response = await fetch("http://localhost:4000/api/admin/export");
+      const response = await fetch(`${API_SERVER}/api/admin/export`);
       const data = await response.json();
 
       if (!response.ok) {

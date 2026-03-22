@@ -6,7 +6,8 @@ import {
   sendCollaborationRequest,
   getReceivedCollaborations,
   acceptCollaboration,
-  ignoreCollaboration
+  ignoreCollaboration,
+  API_SERVER
 } from "../services/api";
 import "../App.css";
 
@@ -737,7 +738,7 @@ function UploadProject() {
               )}
               {detailProject.filesUrl && (
                 <a
-                  href={`http://localhost:4000${detailProject.filesUrl}`}
+                  href={`${API_SERVER}${detailProject.filesUrl}`}
                   download
                   className="detail-action-btn download-btn"
                 >

@@ -7,7 +7,7 @@ import "prismjs/components/prism-java";
 import "prismjs/components/prism-c";
 import "prismjs/components/prism-cpp";
 import "../App.css";
-import { getCurrentUser } from "../services/api";
+import { getCurrentUser, API_SERVER } from "../services/api";
 import { copyWithToast, checkLanguageMismatch } from "../utils/codeUtils";
 
 function ProblemSolving() {
@@ -88,7 +88,7 @@ function ProblemSolving() {
     setAiFeedback(null);
 
     try {
-      const res = await fetch("http://localhost:4000/api/problem-generate", {
+      const res = await fetch(`${API_SERVER}/api/problem-generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -161,7 +161,7 @@ function ProblemSolving() {
     const currentUser = getCurrentUser();
 
     try {
-      const res = await fetch("http://localhost:4000/api/problem-check", {
+      const res = await fetch(`${API_SERVER}/api/problem-check`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
