@@ -30,6 +30,12 @@ import projectsRoute from "./routes/projects.js";
 import reportsRoute from "./routes/reports.js";
 import oauthRoute from "./routes/oauth.js";
 import collaborationsRoute from "./routes/collaborations.js";
+import connectionsRoute from "./routes/connections.js";
+import savedRoute from "./routes/saved.js";
+import notificationsRoute from "./routes/notifications.js";
+import insightsRoute from "./routes/insights.js";
+import executeRoute from "./routes/execute.js";
+import contestsRoute from "./routes/contests.js";
 
 dotenv.config();
 
@@ -80,6 +86,24 @@ app.use("/api/oauth", oauthRoute);
 // Collaboration Requests
 app.use("/api/collaborations", collaborationsRoute);
 
+// Social Connections
+app.use("/api/connections", connectionsRoute);
+
+// Saved Problems & Projects
+app.use("/api/saved", savedRoute);
+
+// Notifications
+app.use("/api/notifications", notificationsRoute);
+
+// Insights & Analytics
+app.use("/api/insights", insightsRoute);
+
+// Code Execution (Judge0)
+app.use("/api/execute", executeRoute);
+
+// Weekly Contests System
+app.use("/api/contests", contestsRoute);
+
 // --------------------
 // Database Health Check
 // --------------------
@@ -128,4 +152,8 @@ app.listen(PORT, async () => {
   console.log("→ /api/problem-check (Solution Checker)");
   console.log("→ /api/health (Database Health Check)");
   console.log("→ /api/collaborations (Collaboration Requests)");
+  console.log("→ /api/connections (Social Connections)");
+  console.log("→ /api/saved (Saved Problems & Projects)");
+  console.log("→ /api/notifications (Notifications)");
+  console.log("→ /api/insights (Insights & Analytics)");
 });

@@ -3,6 +3,7 @@ import { query } from "../config/db.js";
 import multer from "multer";
 import path from "path";
 import { fileURLToPath } from "url";
+import fs from "fs";
 
 // ES Module dirname workaround
 const __filename = fileURLToPath(import.meta.url);
@@ -10,10 +11,28 @@ const __dirname = path.dirname(__filename);
 
 const router = express.Router();
 
-// Configure multer for file uploads
+// Ensure upload directories exist
+const ensureDir = (dirPath) => {
+    if (!fs.existsSync(dirPath)) {
+        fs.mkdirSync(dirPath, { recursive: true });
+    }
+};
+ensureDir(path.join(__dirname, "../uploads/projects"));
+ensureDir(path.join(__dirname, "../uploads/screenshots"));
+ensureDir(path.join(__dirname, "../uploads/videos"));
+
+// Configure multer storage for different file types
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, path.join(__dirname, "../uploads/projects"));
+        let uploadPath = path.join(__dirname, "../uploads/projects");
+
+        if (file.fieldname === "screenshots") {
+            uploadPath = path.join(__dirname, "../uploads/screenshots");
+        } else if (file.fieldname === "demoVideo") {
+            uploadPath = path.join(__dirname, "../uploads/videos");
+        }
+
+        cb(null, uploadPath);
     },
     filename: (req, file, cb) => {
         const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
@@ -21,41 +40,89 @@ const storage = multer.diskStorage({
     },
 });
 
-// Allowed file types for project uploads
-const allowedMimeTypes = [
+// Allowed file types for different uploads
+const allowedArchiveMimeTypes = [
     "application/zip",
     "application/x-zip-compressed",
     "application/x-rar-compressed",
     "application/x-7z-compressed",
     "application/x-tar",
     "application/gzip",
-    "application/octet-stream" // For some ZIP files
+    "application/octet-stream"
 ];
 
-const upload = multer({
-    storage,
-    limits: { fileSize: 200 * 1024 * 1024 }, // 200MB max
-    fileFilter: (req, file, cb) => {
-        // Check if it's an allowed archive type or has archive extension
+const allowedImageMimeTypes = [
+    "image/jpeg",
+    "image/png",
+    "image/gif",
+    "image/webp"
+];
+
+const allowedVideoMimeTypes = [
+    "video/mp4",
+    "video/webm",
+    "video/quicktime",
+    "video/x-msvideo"
+];
+
+// File filter for multiple file types
+const fileFilter = (req, file, cb) => {
+    if (file.fieldname === "projectFile") {
         const ext = path.extname(file.originalname).toLowerCase();
         const isAllowedExt = ['.zip', '.rar', '.7z', '.tar', '.gz', '.tgz'].includes(ext);
-        const isAllowedMime = allowedMimeTypes.includes(file.mimetype);
-
+        const isAllowedMime = allowedArchiveMimeTypes.includes(file.mimetype);
         if (isAllowedExt || isAllowedMime) {
             cb(null, true);
         } else {
-            cb(new Error("Only archive files (ZIP, RAR, 7z, TAR) are allowed"), false);
+            cb(new Error("Only archive files (ZIP, RAR, 7z, TAR) are allowed for project files"), false);
         }
+    } else if (file.fieldname === "screenshots") {
+        if (allowedImageMimeTypes.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error("Only image files (JPEG, PNG, GIF, WebP) are allowed for screenshots"), false);
+        }
+    } else if (file.fieldname === "demoVideo") {
+        if (allowedVideoMimeTypes.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error("Only video files (MP4, WebM, MOV, AVI) are allowed for demo video"), false);
+        }
+    } else {
+        cb(null, true);
+    }
+};
+
+// Configure multer for multiple file uploads
+const upload = multer({
+    storage,
+    limits: {
+        fileSize: 200 * 1024 * 1024, // 200MB max per file
+        files: 10 // Max 10 files total (1 project + 8 screenshots + 1 video)
     },
+    fileFilter: fileFilter
 });
+
+// Define fields for multiple file uploads
+const projectUpload = upload.fields([
+    { name: "projectFile", maxCount: 1 },
+    { name: "screenshots", maxCount: 8 },
+    { name: "demoVideo", maxCount: 1 }
+]);
 
 // Multer error handling middleware
 const handleMulterError = (err, req, res, next) => {
     if (err instanceof multer.MulterError) {
         if (err.code === 'LIMIT_FILE_SIZE') {
             return res.status(400).json({
-                error: "File too large. Maximum size is 200MB.",
-                details: "Please compress your project or upload a smaller file."
+                error: "File too large. Maximum size is 200MB per file.",
+                details: "Please compress your file or upload a smaller one."
+            });
+        }
+        if (err.code === 'LIMIT_FILE_COUNT') {
+            return res.status(400).json({
+                error: "Too many files. Maximum is 8 screenshots.",
+                details: "Please reduce the number of screenshots."
             });
         }
         return res.status(400).json({ error: err.message });
@@ -73,50 +140,111 @@ router.get("/", async (req, res) => {
         const { language, category, sort } = req.query;
         const limit = parseInt(req.query.limit) || 20;
 
-        let sql = `
-      SELECT p.id, p.user_id, p.title, p.description, p.programming_language, p.category,
-             p.github_url, p.files_url, p.views_count, p.likes_count, p.created_at,
-             u.full_name as author_name
-      FROM projects p
-      JOIN users u ON p.user_id = u.id
-      WHERE p.is_published = TRUE
-    `;
-        const params = [];
-        let paramIndex = 1;
+        // First try with all columns, fallback to basic columns if error
+        let result;
+        let hasExtraColumns = true;
 
-        if (language && language !== "All Languages") {
-            sql += ` AND p.programming_language = $${paramIndex}`;
-            params.push(language);
-            paramIndex++;
+        try {
+            let sql = `
+                SELECT p.id, p.user_id, p.title, p.description, p.programming_language, p.category,
+                       p.github_url, p.files_url, p.screenshots, p.demo_video_url, p.views_count, p.likes_count, p.created_at,
+                       u.full_name as author_name
+                FROM projects p
+                JOIN users u ON p.user_id = u.id
+                WHERE p.is_published = TRUE
+            `;
+            const params = [];
+            let paramIndex = 1;
+
+            if (language && language !== "All Languages") {
+                sql += ` AND p.programming_language = $${paramIndex}`;
+                params.push(language);
+                paramIndex++;
+            }
+
+            if (category && category !== "All Categories") {
+                sql += ` AND p.category = $${paramIndex}`;
+                params.push(category);
+                paramIndex++;
+            }
+
+            // Sort order
+            if (sort === "Most Popular") {
+                sql += ` ORDER BY p.likes_count DESC`;
+            } else {
+                sql += ` ORDER BY p.created_at DESC`;
+            }
+
+            sql += ` LIMIT $${paramIndex}`;
+            params.push(limit);
+
+            result = await query(sql, params);
+        } catch (columnError) {
+            // Fallback query without optional columns
+            console.log("Using fallback query for projects (missing columns)");
+            hasExtraColumns = false;
+
+            let sql = `
+                SELECT p.id, p.user_id, p.title, p.description, p.programming_language, p.category,
+                       p.github_url, p.views_count, p.likes_count, p.created_at,
+                       u.full_name as author_name
+                FROM projects p
+                JOIN users u ON p.user_id = u.id
+                WHERE p.is_published = TRUE
+            `;
+            const params = [];
+            let paramIndex = 1;
+
+            if (language && language !== "All Languages") {
+                sql += ` AND p.programming_language = $${paramIndex}`;
+                params.push(language);
+                paramIndex++;
+            }
+
+            if (category && category !== "All Categories") {
+                sql += ` AND p.category = $${paramIndex}`;
+                params.push(category);
+                paramIndex++;
+            }
+
+            if (sort === "Most Popular") {
+                sql += ` ORDER BY p.likes_count DESC`;
+            } else {
+                sql += ` ORDER BY p.created_at DESC`;
+            }
+
+            sql += ` LIMIT $${paramIndex}`;
+            params.push(limit);
+
+            result = await query(sql, params);
         }
-
-        if (category && category !== "All Categories") {
-            sql += ` AND p.category = $${paramIndex}`;
-            params.push(category);
-            paramIndex++;
-        }
-
-        // Sort order
-        if (sort === "Most Popular") {
-            sql += ` ORDER BY p.likes_count DESC`;
-        } else {
-            sql += ` ORDER BY p.created_at DESC`;
-        }
-
-        sql += ` LIMIT $${paramIndex}`;
-        params.push(limit);
-
-        const result = await query(sql, params);
 
         // Get tags for each project
         const projectsWithTags = await Promise.all(
             result.rows.map(async (project) => {
-                const tagsResult = await query(
-                    `SELECT t.name FROM tags t
-           JOIN project_tags pt ON t.id = pt.tag_id
-           WHERE pt.project_id = $1`,
-                    [project.id]
-                );
+                let tags = [];
+                try {
+                    const tagsResult = await query(
+                        `SELECT t.name FROM tags t
+                         JOIN project_tags pt ON t.id = pt.tag_id
+                         WHERE pt.project_id = $1`,
+                        [project.id]
+                    );
+                    tags = tagsResult.rows.map((t) => t.name);
+                } catch {
+                    // Tags table might not exist
+                }
+
+                // Parse screenshots JSON if it exists
+                let screenshots = [];
+                if (hasExtraColumns && project.screenshots) {
+                    try {
+                        screenshots = JSON.parse(project.screenshots);
+                    } catch {
+                        screenshots = [];
+                    }
+                }
+
                 return {
                     id: project.id,
                     userId: project.user_id,
@@ -125,12 +253,14 @@ router.get("/", async (req, res) => {
                     language: project.programming_language,
                     category: project.category,
                     github: project.github_url,
-                    filesUrl: project.files_url,
+                    filesUrl: hasExtraColumns ? project.files_url : null,
+                    screenshots: screenshots,
+                    demoVideoUrl: hasExtraColumns ? project.demo_video_url : null,
                     views: project.views_count,
                     likes: project.likes_count,
                     author: project.author_name,
                     createdAt: project.created_at,
-                    tags: tagsResult.rows.map((t) => t.name),
+                    tags: tags,
                 };
             })
         );
@@ -138,7 +268,7 @@ router.get("/", async (req, res) => {
         res.json({ projects: projectsWithTags });
     } catch (error) {
         console.error("Projects fetch error:", error);
-        res.status(500).json({ error: "Failed to fetch projects" });
+        res.status(500).json({ error: "Failed to fetch projects", details: error.message });
     }
 });
 
@@ -180,7 +310,7 @@ router.get("/user/:userId", async (req, res) => {
 // ========================
 // CREATE PROJECT
 // ========================
-router.post("/", upload.single("projectFile"), handleMulterError, async (req, res) => {
+router.post("/", projectUpload, handleMulterError, async (req, res) => {
     try {
         const { userId, title, description, github } = req.body;
         let { category } = req.body;
@@ -208,15 +338,27 @@ router.post("/", upload.single("projectFile"), handleMulterError, async (req, re
             category = null; // Allow null for no category
         }
 
-        // Get file path if uploaded
-        const filesUrl = req.file ? `/uploads/projects/${req.file.filename}` : null;
+        // Get file paths from uploaded files
+        const filesUrl = req.files?.projectFile?.[0]
+            ? `/uploads/projects/${req.files.projectFile[0].filename}`
+            : null;
 
-        // Insert project
+        // Get screenshot URLs (array)
+        const screenshotUrls = req.files?.screenshots
+            ? req.files.screenshots.map(file => `/uploads/screenshots/${file.filename}`)
+            : [];
+
+        // Get demo video URL
+        const demoVideoUrl = req.files?.demoVideo?.[0]
+            ? `/uploads/videos/${req.files.demoVideo[0].filename}`
+            : null;
+
+        // Insert project with screenshots and video
         const result = await query(
-            `INSERT INTO projects (user_id, title, description, category, github_url, files_url, is_published, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, TRUE, NOW())
-       RETURNING id, title, description, category, files_url`,
-            [userId, title, description || '', category, github || null, filesUrl]
+            `INSERT INTO projects (user_id, title, description, category, github_url, files_url, screenshots, demo_video_url, is_published, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, TRUE, NOW())
+       RETURNING id, title, description, category, files_url, screenshots, demo_video_url`,
+            [userId, title, description || '', category, github || null, filesUrl, JSON.stringify(screenshotUrls), demoVideoUrl]
         );
 
         const project = result.rows[0];
@@ -260,6 +402,8 @@ router.post("/", upload.single("projectFile"), handleMulterError, async (req, re
                 title: project.title,
                 description: project.description,
                 category: project.category,
+                screenshots: screenshotUrls,
+                demoVideoUrl: demoVideoUrl
             },
         });
     } catch (error) {

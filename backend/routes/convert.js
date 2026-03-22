@@ -22,7 +22,7 @@ Input code:
 ${inputCode}
 `;
 
-    // Gemini Flash 2.5 REST endpoint (using API key as param)
+    // Gemini Flash 2.0 REST endpoint (using API key as param)
     const endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
 
     const body = {

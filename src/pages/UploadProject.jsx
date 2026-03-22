@@ -12,7 +12,9 @@ import {
 import "../App.css";
 
 function UploadProject() {
-  const [showUpload, setShowUpload] = useState(false);
+  // View state: 'gallery', 'upload', 'requests'
+  const [currentView, setCurrentView] = useState('gallery');
+
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -30,6 +32,9 @@ function UploadProject() {
   const [projectTitle, setProjectTitle] = useState("");
   const [description, setDescription] = useState("");
   const [projectFile, setProjectFile] = useState(null);
+  const [screenshots, setScreenshots] = useState([]);
+  const [demoVideo, setDemoVideo] = useState(null);
+  const [videoError, setVideoError] = useState("");
   const [category, setCategory] = useState("");
   const [tags, setTags] = useState("");
   const [github, setGithub] = useState("");
@@ -104,37 +109,44 @@ function UploadProject() {
 
     setSubmitting(true);
     try {
-      const tagArray = tags.split(",").map((t) => t.trim()).filter((t) => t);
-
-      // Build FormData for file upload
       const formData = new FormData();
-      formData.append("userId", currentUser.id);
       formData.append("title", projectTitle);
       formData.append("description", description);
       formData.append("category", category);
+      formData.append("tags", tags);
       formData.append("github", github);
-      formData.append("tags", JSON.stringify(tagArray));
+      formData.append("userId", currentUser.id);
+      formData.append("author", currentUser.name || currentUser.email);
+
       if (projectFile) {
         formData.append("projectFile", projectFile);
       }
 
-      const result = await createProject(formData);
+      screenshots.forEach((file, index) => {
+        formData.append("screenshots", file);
+      });
 
-      if (result.project) {
-        alert("Project uploaded successfully!");
-        // Reset form
-        setProjectTitle("");
-        setDescription("");
-        setProjectFile(null);
-        setCategory("");
-        setTags("");
-        setGithub("");
-        setShowUpload(false);
-        // Refresh projects list
-        fetchProjects();
-      } else {
-        alert(result.error || "Failed to upload project");
+      if (demoVideo) {
+        formData.append("demoVideo", demoVideo);
       }
+
+      await createProject(formData);
+      alert("Project uploaded successfully!");
+
+      // Reset form
+      setProjectTitle("");
+      setDescription("");
+      setProjectFile(null);
+      setScreenshots([]);
+      setDemoVideo(null);
+      setVideoError("");
+      setCategory("");
+      setTags("");
+      setGithub("");
+
+      // Go back to gallery
+      setCurrentView('gallery');
+      fetchProjects();
     } catch (error) {
       console.error("Upload error:", error);
       alert("Failed to upload project. Please try again.");
@@ -149,58 +161,50 @@ function UploadProject() {
     const date = new Date(dateString);
     const now = new Date();
     const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
 
-    if (diffDays === 0) return "Today";
-    if (diffDays === 1) return "Yesterday";
-    if (diffDays < 7) return `${diffDays} days ago`;
-    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
-    return `${Math.floor(diffDays / 30)} months ago`;
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    return `${diffDays}d ago`;
   };
 
   // Handle open collaboration request modal
   const handleOpenInvite = (project) => {
     setSelectedProject(project);
     setCollabDescription("");
-    setCollabEmail(currentUser?.email || "");
+    setCollabEmail("");
     setInviteMessage("");
     setShowInviteModal(true);
   };
 
   // Send collaboration request
   const handleSendCollabRequest = async () => {
-    if (!collabDescription.trim()) {
-      setInviteMessage("Please describe why you want to collaborate");
-      return;
-    }
-    if (!collabEmail.trim()) {
-      setInviteMessage("Please enter your email for contact");
+    if (!collabDescription.trim() || !collabEmail.trim()) {
+      setInviteMessage("⚠️ Please fill in all fields");
       return;
     }
 
     setSendingRequest(true);
     try {
-      const result = await sendCollaborationRequest({
-        projectId: selectedProject.id,
-        requesterId: currentUser.id,
-        ownerId: selectedProject.userId,
+      await sendCollaborationRequest({
+        project_id: selectedProject.id,
+        requester_id: currentUser.id,
+        owner_id: selectedProject.userId,
         description: collabDescription,
-        requesterEmail: collabEmail
+        requester_email: collabEmail
       });
 
-      if (result.message) {
-        setInviteMessage("✅ Collaboration request sent successfully!");
-        setTimeout(() => {
-          setShowInviteModal(false);
-          setInviteMessage("");
-          setCollabDescription("");
-        }, 2000);
-      } else {
-        setInviteMessage(result.error || "Failed to send request");
-      }
+      setInviteMessage("✅ Collaboration request sent!");
+      setTimeout(() => {
+        setShowInviteModal(false);
+        setInviteMessage("");
+      }, 2000);
     } catch (error) {
       console.error("Send request error:", error);
-      setInviteMessage("Failed to send request. Please try again.");
+      setInviteMessage("❌ Failed to send request. Please try again.");
     } finally {
       setSendingRequest(false);
     }
@@ -240,9 +244,301 @@ function UploadProject() {
     }
   };
 
-  // Toggle for showing collaboration requests
-  const [showCollabRequests, setShowCollabRequests] = useState(false);
+  // ========== UPLOAD PROJECT PAGE ==========
+  if (currentView === 'upload') {
+    return (
+      <div className="dashboard-container">
+        <div className="upload-page-content">
+          <div className="upload-form-container">
+            {/* Header Row with Title Left and Back Button Right - INSIDE WHITE CONTAINER */}
+            <div className="page-header-with-back">
+              <div className="page-header-left">
+                <h1 className="welcome-text page-title-left">Upload Project</h1>
+                <p className="sub-text page-subtitle">Share your project with the community</p>
+              </div>
+              <button className="back-btn" onClick={() => setCurrentView('gallery')} title="Back to Gallery">
+                <span className="back-arrow">←</span>
+              </button>
+            </div>
 
+            <label>Project Title</label>
+            <input
+              className="input-field"
+              placeholder="Enter project title"
+              value={projectTitle}
+              onChange={(e) => setProjectTitle(e.target.value)}
+            />
+
+            <label>Description</label>
+            <textarea
+              className="textarea-field"
+              placeholder="Describe your project..."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={5}
+            />
+
+            <label>Upload Project (ZIP file)</label>
+            <input
+              type="file"
+              className="input-field file-input"
+              accept=".zip,.rar,.7z,.tar,.gz"
+              onChange={(e) => setProjectFile(e.target.files[0])}
+            />
+            {projectFile && (
+              <p className="file-selected">📎 {projectFile.name}</p>
+            )}
+
+            {/* Two-column row for Screenshots and Video */}
+            <div className="upload-form-row media-row">
+              <div className="form-group">
+                <label>📸 Screenshots (max 8 images)</label>
+                <input
+                  type="file"
+                  className="input-field file-input"
+                  accept="image/jpeg,image/png,image/gif,image/webp"
+                  multiple
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files).slice(0, 8);
+                    setScreenshots(files);
+                  }}
+                />
+                {screenshots.length > 0 && (
+                  <div className="screenshots-preview">
+                    {screenshots.map((file, index) => (
+                      <div key={index} className="screenshot-item">
+                        <img
+                          src={URL.createObjectURL(file)}
+                          alt={`Screenshot ${index + 1}`}
+                        />
+                        <span>{file.name.substring(0, 12)}...</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="form-group">
+                <label>🎬 Demo Video (max 2 min)</label>
+                <input
+                  type="file"
+                  className="input-field file-input"
+                  accept="video/mp4,video/webm,video/quicktime,video/x-msvideo"
+                  onChange={(e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      setVideoError("");
+                      const video = document.createElement('video');
+                      video.preload = 'metadata';
+                      video.onloadedmetadata = () => {
+                        window.URL.revokeObjectURL(video.src);
+                        const duration = video.duration;
+                        if (duration > 120) {
+                          setVideoError(`Video is ${Math.floor(duration / 60)}:${Math.floor(duration % 60).toString().padStart(2, '0')} - must be under 2 minutes`);
+                          setDemoVideo(null);
+                          e.target.value = '';
+                        } else {
+                          setDemoVideo(file);
+                        }
+                      };
+                      video.onerror = () => {
+                        setVideoError("Could not read video file");
+                        setDemoVideo(null);
+                      };
+                      video.src = URL.createObjectURL(file);
+                    }
+                  }}
+                />
+                {videoError && (
+                  <p className="error-text">⚠️ {videoError}</p>
+                )}
+                {demoVideo && (
+                  <p className="success-text">🎬 {demoVideo.name} ({(demoVideo.size / (1024 * 1024)).toFixed(2)} MB)</p>
+                )}
+              </div>
+            </div>
+
+            {/* Two-column row for Category and Tags */}
+            <div className="upload-form-row">
+              <div className="form-group">
+                <label>Category</label>
+                <select
+                  className="input-field"
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                >
+                  <option value="">Select category</option>
+                  <option>Web Development</option>
+                  <option>Data Science</option>
+                  <option>Mobile Apps</option>
+                  <option>Machine Learning</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>Tags</label>
+                <input
+                  className="input-field"
+                  placeholder="React, TypeScript, API..."
+                  value={tags}
+                  onChange={(e) => setTags(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <label>GitHub Repository (optional)</label>
+            <input
+              className="input-field"
+              placeholder="https://github.com/your-username/your-project"
+              value={github}
+              onChange={(e) => setGithub(e.target.value)}
+            />
+
+            <button
+              className="submit-project-btn publish-btn"
+              onClick={handleSubmit}
+              disabled={submitting}
+            >
+              {submitting ? "Uploading..." : "🚀 Publish Project"}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ========== COLLABORATION REQUESTS PAGE ==========
+  if (currentView === 'requests') {
+    return (
+      <div className="dashboard-container">
+        <div className="requests-page-content">
+          <div className="requests-container">
+            {/* Header Row with Title Left and Back Button Right - INSIDE WHITE CONTAINER */}
+            <div className="page-header-with-back">
+              <div className="page-header-left">
+                <h1 className="welcome-text page-title-left">Collaboration Requests</h1>
+                <p className="sub-text page-subtitle">Manage your collaboration requests</p>
+              </div>
+              <button className="back-btn" onClick={() => setCurrentView('gallery')} title="Back to Gallery">
+                <span className="back-arrow">←</span>
+              </button>
+            </div>
+
+            {receivedRequests.length > 0 ? (
+              <div className="requests-list">
+                {receivedRequests.map((request) => (
+                  <div
+                    key={request.id}
+                    className={`request-card-large ${request.status}`}
+                    onClick={() => {
+                      setSelectedRequest(request);
+                      setShowRequestDetail(true);
+                    }}
+                  >
+                    <div className="request-card-top">
+                      <div className="request-info">
+                        <h3 className="requester-name">👤 {request.requester_name}</h3>
+                        <p className="request-project-title">For: {request.project_title}</p>
+                      </div>
+                      <span className={`request-status-pill status-${request.status}`}>
+                        {request.status === 'pending' && '⏳ Pending'}
+                        {request.status === 'accepted' && '✅ Accepted'}
+                        {request.status === 'ignored' && '❌ Ignored'}
+                      </span>
+                    </div>
+                    <p className="request-description">{request.description}</p>
+                    <div className="request-footer">
+                      <span className="request-time">📅 {formatTimeAgo(request.created_at)}</span>
+                      <span className="request-email">📧 {request.requester_email}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="empty-requests">
+                <div className="empty-icon">📭</div>
+                <h3>No collaboration requests yet</h3>
+                <p>When someone wants to collaborate on your projects, you'll see their requests here.</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* REQUEST DETAIL MODAL */}
+        {showRequestDetail && selectedRequest && (
+          <div className="modal-overlay" onClick={() => setShowRequestDetail(false)}>
+            <div className="request-detail-modal simple" onClick={(e) => e.stopPropagation()}>
+              <button
+                className="modal-close-btn"
+                onClick={() => setShowRequestDetail(false)}
+              >
+                ✕
+              </button>
+
+              <div className="request-simple-header">
+                <h2>🤝 Collaboration Request</h2>
+                <span className={`request-status-badge status-${selectedRequest.status}`}>
+                  {selectedRequest.status.toUpperCase()}
+                </span>
+              </div>
+
+              <div className="request-simple-info">
+                <p><strong>From:</strong> {selectedRequest.requester_name}</p>
+                <p><strong>Project:</strong> {selectedRequest.project_title}</p>
+                <p><strong>Received:</strong> {formatTimeAgo(selectedRequest.created_at)}</p>
+              </div>
+
+              <div className="request-simple-message">
+                <p className="message-label">💬 Message:</p>
+                <p className="message-text">{selectedRequest.description}</p>
+              </div>
+
+              {selectedRequest.status !== 'ignored' && (
+                <div className="request-simple-contact">
+                  <a href={`mailto:${selectedRequest.requester_email}`} className="contact-email-link">
+                    📧 {selectedRequest.requester_email}
+                  </a>
+                </div>
+              )}
+
+              {selectedRequest.status === 'accepted' && (
+                <div className="request-accepted-msg">
+                  ✅ Request accepted! Contact them via email above.
+                </div>
+              )}
+
+              {inviteMessage && (
+                <div className="invite-message success">
+                  {inviteMessage}
+                </div>
+              )}
+
+              {selectedRequest.status === 'pending' && (
+                <div className="request-simple-actions">
+                  <button
+                    className="ignore-btn"
+                    onClick={handleIgnoreRequest}
+                    disabled={processingRequest}
+                  >
+                    Ignore
+                  </button>
+                  <button
+                    className="accept-btn"
+                    onClick={handleAcceptRequest}
+                    disabled={processingRequest}
+                  >
+                    {processingRequest ? "Processing..." : "Accept"}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ========== GALLERY VIEW (Default) ==========
   return (
     <div className="dashboard-container">
       <div className="gallery-header-row">
@@ -254,12 +550,12 @@ function UploadProject() {
           </p>
         </div>
 
-        {/* Collaboration Requests Button with Dropdown */}
+        {/* Collaboration Requests Button */}
         {currentUser && (
-          <div className="collab-dropdown-container">
+          <div className="collab-btn-container">
             <button
-              className={`collab-requests-btn ${showCollabRequests ? 'active' : ''}`}
-              onClick={() => setShowCollabRequests(!showCollabRequests)}
+              className="collab-requests-btn"
+              onClick={() => setCurrentView('requests')}
             >
               📬 Collaboration Requests
               {receivedRequests.filter(r => r.status === 'pending').length > 0 && (
@@ -268,52 +564,6 @@ function UploadProject() {
                 </span>
               )}
             </button>
-
-            {/* Dropdown Menu */}
-            {showCollabRequests && (
-              <div className="collab-dropdown-menu">
-                <div className="collab-dropdown-header">
-                  <span>📬 Collaboration Requests</span>
-                  <button
-                    className="dropdown-close-btn"
-                    onClick={() => setShowCollabRequests(false)}
-                  >
-                    ✕
-                  </button>
-                </div>
-
-                <div className="collab-dropdown-content">
-                  {receivedRequests.length > 0 ? (
-                    receivedRequests.map((request) => (
-                      <div
-                        key={request.id}
-                        className={`dropdown-request-item ${request.status}`}
-                        onClick={() => {
-                          setSelectedRequest(request);
-                          setShowRequestDetail(true);
-                          setShowCollabRequests(false);
-                        }}
-                      >
-                        <div className="dropdown-item-header">
-                          <span className="dropdown-requester">👤 {request.requester_name}</span>
-                          <span className={`dropdown-status status-${request.status}`}>
-                            {request.status === 'pending' && '⏳'}
-                            {request.status === 'accepted' && '✅'}
-                            {request.status === 'ignored' && '❌'}
-                          </span>
-                        </div>
-                        <p className="dropdown-project">For: {request.project_title}</p>
-                        <span className="dropdown-time">{formatTimeAgo(request.created_at)}</span>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="dropdown-empty">
-                      <p>📭 No collaboration requests yet</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
           </div>
         )}
       </div>
@@ -370,28 +620,23 @@ function UploadProject() {
         {/* Upload Button */}
         <button
           className="submit-project-btn"
-          onClick={() => setShowUpload(!showUpload)}
+          onClick={() => setCurrentView('upload')}
         >
           ➕ Upload Project
         </button>
       </div>
 
-      <div className="project-layout">
-
-        {/* LEFT SIDE – BROWSE PROJECTS */}
-        <div className="browse-box">
-          {/* Project List - Only OTHER users' projects */}
+      {/* PROJECTS GRID */}
+      <div className="project-layout full-width-layout">
+        <div className="browse-box full-width">
           <div className="project-list">
             {loading ? (
               <div className="project-card">
                 <h4>Loading projects...</h4>
               </div>
             ) : (() => {
-              // Filter out current user's projects and apply search
               const filteredProjects = projects.filter(proj => {
-                // Exclude current user's projects
                 if (currentUser && proj.userId === currentUser.id) return false;
-                // Apply search filter
                 if (searchQuery.trim()) {
                   const query = searchQuery.toLowerCase();
                   return (
@@ -423,9 +668,7 @@ function UploadProject() {
 
                     <div className="tag-row">
                       {proj.tags?.slice(0, 3).map((t, j) => (
-                        <span key={j} className="tag">
-                          {t}
-                        </span>
+                        <span key={j} className="tag">{t}</span>
                       ))}
                       {proj.category && <span className="tag category-tag">{proj.category}</span>}
                     </div>
@@ -448,158 +691,7 @@ function UploadProject() {
             })()}
           </div>
         </div>
-
-        {/* RIGHT SIDE – UPLOAD PROJECT (DROPDOWN) */}
-        {showUpload && (
-          <div className="upload-box">
-            <h3>📤 Upload Project</h3>
-            <p>Share your project with the community</p>
-
-            <label>Project Title</label>
-            <input
-              className="input-field"
-              placeholder="Enter project title"
-              value={projectTitle}
-              onChange={(e) => setProjectTitle(e.target.value)}
-            />
-
-            <label>Description</label>
-            <textarea
-              className="textarea-field"
-              placeholder="Describe your project..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-
-            <label>Upload Project (ZIP file)</label>
-            <input
-              type="file"
-              className="input-field"
-              accept=".zip"
-              onChange={(e) => setProjectFile(e.target.files[0])}
-              style={{ padding: '10px' }}
-            />
-            {projectFile && <p style={{ margin: '5px 0', color: '#0066ff' }}>📎 {projectFile.name}</p>}
-
-            <label>Category</label>
-            <select
-              className="input-field"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-            >
-              <option value="">Select category</option>
-              <option>Web Development</option>
-              <option>Data Science</option>
-              <option>Mobile Apps</option>
-              <option>Machine Learning</option>
-            </select>
-
-            <label>Tags</label>
-            <input
-              className="input-field"
-              placeholder="React, TypeScript, API..."
-              value={tags}
-              onChange={(e) => setTags(e.target.value)}
-            />
-
-            <label>GitHub Repository</label>
-            <input
-              className="input-field"
-              placeholder="https://github.com/..."
-              value={github}
-              onChange={(e) => setGithub(e.target.value)}
-            />
-
-            <button
-              className="submit-project-btn"
-              onClick={handleSubmit}
-              disabled={submitting}
-            >
-              {submitting ? "Uploading..." : "🚀 Publish Project"}
-            </button>
-          </div>
-        )}
       </div>
-
-      {/* REQUEST DETAIL MODAL */}
-      {showRequestDetail && selectedRequest && (
-        <div className="modal-overlay" onClick={() => setShowRequestDetail(false)}>
-          <div className="request-detail-modal" onClick={(e) => e.stopPropagation()}>
-            <button
-              className="modal-close-btn"
-              onClick={() => setShowRequestDetail(false)}
-            >
-              ✕
-            </button>
-
-            <div className="request-detail-header">
-              <h2>🤝 Collaboration Request</h2>
-              <span className={`request-status-badge status-${selectedRequest.status}`}>
-                {selectedRequest.status.toUpperCase()}
-              </span>
-            </div>
-
-            <div className="request-detail-body">
-              <div className="request-info-row">
-                <span className="info-label">From:</span>
-                <span className="info-value">{selectedRequest.requester_name}</span>
-              </div>
-              <div className="request-info-row">
-                <span className="info-label">Project:</span>
-                <span className="info-value">{selectedRequest.project_title}</span>
-              </div>
-              <div className="request-info-row">
-                <span className="info-label">Received:</span>
-                <span className="info-value">{formatTimeAgo(selectedRequest.created_at)}</span>
-              </div>
-
-              <div className="request-description-section">
-                <h4>📝 Why they want to collaborate:</h4>
-                <p>{selectedRequest.description}</p>
-              </div>
-
-              <div className="request-contact-section">
-                <h4>📧 Contact Email:</h4>
-                <a href={`mailto:${selectedRequest.requester_email}`} className="contact-email">
-                  {selectedRequest.requester_email}
-                </a>
-                <p className="contact-hint">Click to send them an email</p>
-              </div>
-
-              {inviteMessage && (
-                <div className="invite-message success">
-                  {inviteMessage}
-                </div>
-              )}
-            </div>
-
-            {selectedRequest.status === 'pending' && (
-              <div className="request-detail-actions">
-                <button
-                  className="ignore-btn"
-                  onClick={handleIgnoreRequest}
-                  disabled={processingRequest}
-                >
-                  ❌ Ignore Request
-                </button>
-                <button
-                  className="accept-btn"
-                  onClick={handleAcceptRequest}
-                  disabled={processingRequest}
-                >
-                  {processingRequest ? "Processing..." : "✅ Accept & View Email"}
-                </button>
-              </div>
-            )}
-
-            {selectedRequest.status === 'accepted' && (
-              <div className="accepted-info">
-                <p>✅ You've accepted this request. Contact the requester via email above to start collaborating!</p>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Request Collaboration Modal */}
       {showInviteModal && (
@@ -615,55 +707,40 @@ function UploadProject() {
               </button>
             </div>
 
-            <div className="invite-modal-body">
-              <p className="invite-project-title">
-                Project: <strong>{selectedProject?.title}</strong>
-              </p>
-              <p className="invite-project-author">
-                Owner: <strong>{selectedProject?.author}</strong>
-              </p>
+            <p className="invite-project-info">
+              For: <strong>{selectedProject?.title}</strong>
+            </p>
 
-              <label>Why do you want to collaborate? *</label>
-              <textarea
-                className="input-field textarea-field"
-                placeholder="Describe your skills, experience, and how you'd like to contribute to this project..."
-                value={collabDescription}
-                onChange={(e) => setCollabDescription(e.target.value)}
-                rows={4}
-              />
+            <label>Why do you want to collaborate?</label>
+            <textarea
+              className="textarea-field"
+              placeholder="Describe how you can contribute to this project..."
+              value={collabDescription}
+              onChange={(e) => setCollabDescription(e.target.value)}
+            />
 
-              <label>Your Email (for contact) *</label>
-              <input
-                type="email"
-                className="input-field"
-                placeholder="your.email@gmail.com"
-                value={collabEmail}
-                onChange={(e) => setCollabEmail(e.target.value)}
-              />
-              <p className="input-hint">The project owner will use this email to contact you</p>
+            <label>Your Contact Email</label>
+            <input
+              className="input-field"
+              type="email"
+              placeholder="your.email@example.com"
+              value={collabEmail}
+              onChange={(e) => setCollabEmail(e.target.value)}
+            />
 
-              {inviteMessage && (
-                <div className={`invite-message ${inviteMessage.includes('✅') ? 'success' : 'error'}`}>
-                  {inviteMessage}
-                </div>
-              )}
-
-              <div className="invite-modal-actions">
-                <button
-                  className="cancel-btn"
-                  onClick={() => setShowInviteModal(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  className="send-invite-btn"
-                  onClick={handleSendCollabRequest}
-                  disabled={sendingRequest}
-                >
-                  {sendingRequest ? "Sending..." : "📧 Send Request"}
-                </button>
+            {inviteMessage && (
+              <div className={`invite-message ${inviteMessage.includes('✅') ? 'success' : 'error'}`}>
+                {inviteMessage}
               </div>
-            </div>
+            )}
+
+            <button
+              className="submit-project-btn"
+              onClick={handleSendCollabRequest}
+              disabled={sendingRequest}
+            >
+              {sendingRequest ? "Sending..." : "📤 Send Request"}
+            </button>
           </div>
         </div>
       )}
@@ -681,17 +758,43 @@ function UploadProject() {
 
             <div className="project-detail-header">
               <h2>{detailProject.title}</h2>
-              <div className="project-meta">
-                <span className="author-badge">👤 {detailProject.author}</span>
-                <span className="date-badge">📅 {formatTimeAgo(detailProject.createdAt)}</span>
-              </div>
+              <p className="project-author">By {detailProject.author}</p>
             </div>
 
-            <div className="project-detail-body">
+            <div className="project-detail-content">
               <div className="detail-section">
-                <h4>📝 Description</h4>
-                <p>{detailProject.description || "No description provided"}</p>
+                <h4>📋 Description</h4>
+                <p>{detailProject.description}</p>
               </div>
+
+              {detailProject.screenshots && detailProject.screenshots.length > 0 && (
+                <div className="detail-section">
+                  <h4>📸 Screenshots</h4>
+                  <div className="screenshot-gallery">
+                    {detailProject.screenshots.map((url, i) => (
+                      <img
+                        key={i}
+                        src={`http://localhost:4000${url}`}
+                        alt={`Screenshot ${i + 1}`}
+                        className="detail-screenshot"
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {detailProject.videoUrl && (
+                <div className="detail-section">
+                  <h4>🎬 Demo Video</h4>
+                  <div className="video-container">
+                    <video
+                      controls
+                      className="detail-video"
+                      src={`http://localhost:4000${detailProject.videoUrl}`}
+                    />
+                  </div>
+                </div>
+              )}
 
               {detailProject.category && (
                 <div className="detail-section">
@@ -726,6 +829,29 @@ function UploadProject() {
             </div>
 
             <div className="project-detail-actions">
+              <button
+                className="detail-action-btn save-btn"
+                onClick={() => {
+                  // Save project to localStorage
+                  const savedProjects = JSON.parse(localStorage.getItem('codegenius-saved-projects') || '[]');
+                  const alreadySaved = savedProjects.some(p => p.id === detailProject.id);
+
+                  if (alreadySaved) {
+                    alert('✅ Project already saved!');
+                    return;
+                  }
+
+                  const projectToSave = {
+                    ...detailProject,
+                    savedAt: new Date().toISOString()
+                  };
+                  savedProjects.push(projectToSave);
+                  localStorage.setItem('codegenius-saved-projects', JSON.stringify(savedProjects));
+                  alert('✅ Project saved successfully!');
+                }}
+              >
+                💾 Save Project
+              </button>
               {detailProject.github && (
                 <a
                   href={detailProject.github}

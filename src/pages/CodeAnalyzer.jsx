@@ -13,21 +13,21 @@ import { copyWithToast, checkLanguageMismatch, detectLanguage } from "../utils/c
 // Styled Explanation Component - Line by line explanation
 function ExplanationRenderer({ value }) {
   if (!value || (Array.isArray(value) && value.length === 0)) {
-    return <div className="empty-note">— Nothing to show —</div>;
+    return <div className="ca-empty-note">— Nothing to show —</div>;
   }
 
   // If it's an array of explanation items
   if (Array.isArray(value)) {
     return (
-      <div className="explanation-container">
+      <div className="ca-explanation-container">
         {value.map((item, i) => (
-          <div key={i} className="explanation-line-card">
-            <span className="line-badge">Line {i + 1}</span>
-            <div className="line-code-block">
+          <div key={i} className="ca-explanation-line-card">
+            <span className="ca-line-badge">Line {i + 1}</span>
+            <div className="ca-line-code-block">
               <code>{typeof item === "object" ? item.code || item.line || JSON.stringify(item) : String(item)}</code>
             </div>
             {item.explanation && (
-              <p className="line-explanation">{item.explanation}</p>
+              <p className="ca-line-explanation">{item.explanation}</p>
             )}
           </div>
         ))}
@@ -38,11 +38,11 @@ function ExplanationRenderer({ value }) {
   // If it's a string, parse it into lines
   const lines = String(value).split("\n").filter(l => l.trim());
   return (
-    <div className="explanation-container">
+    <div className="ca-explanation-container">
       {lines.map((line, i) => (
-        <div key={i} className="explanation-line-card">
-          <span className="line-badge">Line {i + 1}</span>
-          <p className="line-explanation">{line}</p>
+        <div key={i} className="ca-explanation-line-card">
+          <span className="ca-line-badge">Line {i + 1}</span>
+          <p className="ca-line-explanation">{line}</p>
         </div>
       ))}
     </div>
@@ -54,8 +54,8 @@ function ErrorsRenderer({ value }) {
   if (!value || (Array.isArray(value) && value.length === 0) ||
     (typeof value === "string" && (value.includes("No errors") || value.includes("no errors")))) {
     return (
-      <div className="no-errors-container">
-        <span className="no-errors-icon">✅</span>
+      <div className="ca-no-errors-container">
+        <span className="ca-no-errors-icon">✅</span>
         <p>No errors or issues detected in your code!</p>
       </div>
     );
@@ -64,20 +64,20 @@ function ErrorsRenderer({ value }) {
   // If it's an array of error objects
   if (Array.isArray(value)) {
     return (
-      <div className="errors-container">
+      <div className="ca-errors-container">
         {value.map((error, i) => (
-          <div key={i} className="error-card">
-            <div className="error-header">
-              <span className="error-icon">⚠️</span>
-              <span className="error-line-badge">Line {error.line || i + 1}</span>
-              <span className={`severity-badge ${error.severity || "medium"}`}>
+          <div key={i} className="ca-error-card">
+            <div className="ca-error-header">
+              <span className="ca-error-icon">⚠️</span>
+              <span className="ca-error-line-badge">Line {error.line || i + 1}</span>
+              <span className={`ca-severity-badge ${error.severity || "medium"}`}>
                 {error.severity || "medium"}
               </span>
             </div>
-            <h4 className="error-title">{error.title || error.type || "Potential Issue"}</h4>
-            <p className="error-description">{error.description || error.message || String(error)}</p>
+            <h4 className="ca-error-title">{error.title || error.type || "Potential Issue"}</h4>
+            <p className="ca-error-description">{error.description || error.message || String(error)}</p>
             {error.fix && (
-              <div className="error-fix-box">
+              <div className="ca-error-fix-box">
                 <code>✓ {error.fix}</code>
               </div>
             )}
@@ -89,13 +89,13 @@ function ErrorsRenderer({ value }) {
 
   // If it's a string, display as single error
   return (
-    <div className="errors-container">
-      <div className="error-card">
-        <div className="error-header">
-          <span className="error-icon">⚠️</span>
-          <span className="severity-badge medium">info</span>
+    <div className="ca-errors-container">
+      <div className="ca-error-card">
+        <div className="ca-error-header">
+          <span className="ca-error-icon">⚠️</span>
+          <span className="ca-severity-badge medium">info</span>
         </div>
-        <p className="error-description">{String(value)}</p>
+        <p className="ca-error-description">{String(value)}</p>
       </div>
     </div>
   );
@@ -104,7 +104,7 @@ function ErrorsRenderer({ value }) {
 // Styled Complexity Component - Time and Space cards
 function ComplexityRenderer({ value }) {
   if (!value) {
-    return <div className="empty-note">— Nothing to show —</div>;
+    return <div className="ca-empty-note">— Nothing to show —</div>;
   }
 
   // Parse complexity data
@@ -126,29 +126,29 @@ function ComplexityRenderer({ value }) {
   }
 
   return (
-    <div className="complexity-container">
-      <div className="complexity-card time">
-        <div className="complexity-icon">
+    <div className="ca-complexity-container">
+      <div className="ca-complexity-card time">
+        <div className="ca-complexity-icon">
           <span>⏱️</span>
         </div>
-        <div className="complexity-content">
+        <div className="ca-complexity-content">
           <h4>Time Complexity</h4>
-          <span className="complexity-value">{timeComplexity}</span>
+          <span className="ca-complexity-value">{timeComplexity}</span>
         </div>
       </div>
 
-      <div className="complexity-card space">
-        <div className="complexity-icon">
+      <div className="ca-complexity-card space">
+        <div className="ca-complexity-icon">
           <span>📊</span>
         </div>
-        <div className="complexity-content">
+        <div className="ca-complexity-content">
           <h4>Space Complexity</h4>
-          <span className="complexity-value">{spaceComplexity}</span>
+          <span className="ca-complexity-value">{spaceComplexity}</span>
         </div>
       </div>
 
       {explanation && (
-        <div className="complexity-explanation">
+        <div className="ca-complexity-explanation">
           <p>{explanation}</p>
         </div>
       )}
@@ -225,7 +225,7 @@ function FlowchartRenderer({ value }) {
           let displayCode = typeof value === "string" ? value : JSON.stringify(value, null, 2);
           // Format for display
           displayCode = displayCode.replace(/```mermaid\n?/gi, '').replace(/```\n?/g, '');
-          containerRef.current.innerHTML = `<pre class="flowchart-fallback">${displayCode}</pre>`;
+          containerRef.current.innerHTML = `<pre class="ca-flowchart-fallback">${displayCode}</pre>`;
         }
       }
     };
@@ -234,17 +234,17 @@ function FlowchartRenderer({ value }) {
   }, [value]);
 
   if (!value) {
-    return <div className="empty-note">— Nothing to show —</div>;
+    return <div className="ca-empty-note">— Nothing to show —</div>;
   }
 
   return (
-    <div className="flowchart-container">
-      {error && <div className="flowchart-error">{error}</div>}
+    <div className="ca-flowchart-container">
+      {error && <div className="ca-flowchart-error">{error}</div>}
       <div
         ref={containerRef}
-        className="flowchart-content mermaid-diagram"
+        className="ca-flowchart-content mermaid-diagram"
       >
-        <div className="loading-message">Loading flowchart...</div>
+        <div className="ca-loading-message">Loading flowchart...</div>
       </div>
     </div>
   );
@@ -253,7 +253,7 @@ function FlowchartRenderer({ value }) {
 // Styled Optimized Code Component
 function OptimizedRenderer({ value }) {
   if (!value) {
-    return <div className="empty-note">— Nothing to show —</div>;
+    return <div className="ca-empty-note">— Nothing to show —</div>;
   }
 
   let code = "";
@@ -267,20 +267,20 @@ function OptimizedRenderer({ value }) {
   }
 
   return (
-    <div className="optimized-container">
-      <div className="optimized-header">
-        <span className="optimized-icon">💡</span>
+    <div className="ca-optimized-container">
+      <div className="ca-optimized-header">
+        <span className="ca-optimized-icon">💡</span>
         <h4>Optimized Code</h4>
       </div>
 
-      <div className="optimized-code-block">
+      <div className="ca-optimized-code-block">
         <pre><code>{code}</code></pre>
       </div>
 
       {improvements.length > 0 && (
-        <div className="improvements-banner">
-          <span className="improvements-icon">✅</span>
-          <div className="improvements-content">
+        <div className="ca-improvements-banner">
+          <span className="ca-improvements-icon">✅</span>
+          <div className="ca-improvements-content">
             <strong>Improvements Applied:</strong>
             <p>{improvements.join(", ")}</p>
           </div>
@@ -288,9 +288,9 @@ function OptimizedRenderer({ value }) {
       )}
 
       {typeof value === "string" && value.toLowerCase().includes("better") && (
-        <div className="improvements-banner">
-          <span className="improvements-icon">✅</span>
-          <div className="improvements-content">
+        <div className="ca-improvements-banner">
+          <span className="ca-improvements-icon">✅</span>
+          <div className="ca-improvements-content">
             <strong>Improvements Applied:</strong>
             <p>Better variable names, overflow prevention, added documentation</p>
           </div>
@@ -308,6 +308,10 @@ export default function CodeAnalyzer() {
   const [analysisResult, setAnalysisResult] = useState(null);
   const [error, setError] = useState("");
   const [languageMismatch, setLanguageMismatch] = useState(null);
+
+  // Panel states
+  const [isEditorMaximized, setIsEditorMaximized] = useState(false);
+  const [isResultsMaximized, setIsResultsMaximized] = useState(false);
 
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
@@ -339,88 +343,75 @@ export default function CodeAnalyzer() {
   };
 
   // Auto-detect language from code
-  const detectLanguage = (code) => {
+  const detectLang = (code) => {
     if (!code || code.trim().length < 10) return null;
 
     const codeText = code.toLowerCase();
 
     // Python patterns
     const pythonPatterns = [
-      /\bdef\s+\w+\s*\(/,          // def function_name(
-      /\bimport\s+\w+/,            // import module
-      /\bfrom\s+\w+\s+import/,     // from x import
-      /\bprint\s*\(/,              // print(
-      /:\s*$/m,                    // colon at end of line
-      /\bself\./,                  // self.
-      /\belif\b/,                  // elif
-      /\b__\w+__\b/,               // __name__, __init__
+      /\bdef\s+\w+\s*\(/,
+      /\bimport\s+\w+/,
+      /\bfrom\s+\w+\s+import/,
+      /\bprint\s*\(/,
+      /:\s*$/m,
+      /\bself\./,
+      /\belif\b/,
     ];
 
     // Java patterns
     const javaPatterns = [
-      /\bpublic\s+(static\s+)?class\b/,   // public class
-      /\bpublic\s+static\s+void\s+main\b/, // main method
-      /\bSystem\.out\.print/,              // System.out.print
-      /\bprivate\s+\w+\s+\w+\s*;/,         // private int x;
-      /\bnew\s+\w+\s*\(/,                  // new Object(
-      /\bextends\s+\w+/,                   // extends Class
-      /\bimplements\s+\w+/,                // implements Interface
+      /\bpublic\s+(static\s+)?class\b/,
+      /\bprivate\s+\w+\s+\w+/,
+      /\bSystem\.out\.print/,
+      /\bvoid\s+main\s*\(/,
+      /\bimport\s+java\./,
     ];
 
     // C++ patterns
     const cppPatterns = [
-      /\#include\s*<\w+>/,              // #include <iostream>
-      /\bstd::/,                        // std::
-      /\bcout\s*<</,                    // cout <<
-      /\bcin\s*>>/,                     // cin >>
-      /\bint\s+main\s*\(/,              // int main(
-      /\busing\s+namespace\s+std/,      // using namespace std
-      /\bvector\s*</,                   // vector<
-      /\b->\b/,                         // pointer arrow
+      /\b#include\s*</,
+      /\bstd::/,
+      /\bcout\s*<</,
+      /\bcin\s*>>/,
+      /\busing\s+namespace\s+std/,
+      /\bvector\s*</,
     ];
 
     // JavaScript patterns
     const jsPatterns = [
-      /\bconst\s+\w+\s*=/,           // const x =
-      /\blet\s+\w+\s*=/,             // let x =
-      /\bvar\s+\w+\s*=/,             // var x =
-      /\bfunction\s+\w+\s*\(/,       // function name(
-      /=>\s*{/,                      // arrow function
-      /\bconsole\.(log|warn|error)\s*\(/, // console.log
-      /\bdocument\./,                // document.
-      /\bwindow\./,                  // window.
-      /\basync\s+function/,          // async function
-      /\bawait\s+/,                  // await
-      /\brequire\s*\(/,              // require(
-      /\bexport\s+(default\s+)?/,    // export
+      /\bconst\s+\w+\s*=/,
+      /\blet\s+\w+\s*=/,
+      /\bfunction\s+\w+\s*\(/,
+      /=>\s*{/,
+      /\bconsole\.log\s*\(/,
+      /\bmodule\.exports/,
+      /\brequire\s*\(/,
     ];
 
-    // Count matches for each language
-    let pythonScore = 0, javaScore = 0, cppScore = 0, jsScore = 0;
+    let pythonScore = pythonPatterns.filter(p => p.test(code)).length;
+    let javaScore = javaPatterns.filter(p => p.test(code)).length;
+    let cppScore = cppPatterns.filter(p => p.test(code)).length;
+    let jsScore = jsPatterns.filter(p => p.test(code)).length;
 
-    pythonPatterns.forEach(p => { if (p.test(code)) pythonScore++; });
-    javaPatterns.forEach(p => { if (p.test(code)) javaScore++; });
-    cppPatterns.forEach(p => { if (p.test(code)) cppScore++; });
-    jsPatterns.forEach(p => { if (p.test(code)) jsScore++; });
-
-    // Find the highest score
     const scores = { Python: pythonScore, Java: javaScore, "C++": cppScore, JavaScript: jsScore };
     const maxScore = Math.max(...Object.values(scores));
 
-    if (maxScore === 0) return null;
-
-    for (const [lang, score] of Object.entries(scores)) {
-      if (score === maxScore) return lang;
+    if (maxScore >= 2) {
+      return Object.keys(scores).find(k => scores[k] === maxScore);
     }
-
     return null;
   };
 
-  // Check for language mismatch when code changes (show warning instead of auto-switch)
+  // Check for language mismatch when code changes
   useEffect(() => {
     if (inputCode.trim().length > 30) {
-      const mismatchResult = checkLanguageMismatch(inputCode, language);
-      setLanguageMismatch(mismatchResult.mismatch ? mismatchResult : null);
+      const detected = detectLang(inputCode);
+      if (detected && detected !== language) {
+        setLanguageMismatch({ detected, selected: language });
+      } else {
+        setLanguageMismatch(null);
+      }
     } else {
       setLanguageMismatch(null);
     }
@@ -428,19 +419,13 @@ export default function CodeAnalyzer() {
 
   // Highlight code using Prism
   const highlightCode = (code, lang) => {
-    if (!code) return "";
     const prismLang = prismLangMap[lang] || "javascript";
     try {
-      return Prism.highlight(code, Prism.languages[prismLang], prismLang);
+      return Prism.highlight(code || "", Prism.languages[prismLang] || Prism.languages.javascript, prismLang);
     } catch (e) {
-      return code;
+      return code || "";
     }
   };
-
-  // Re-highlight when code changes
-  useEffect(() => {
-    Prism.highlightAll();
-  }, [inputCode, language]);
 
   // Generate line numbers
   const getLineNumbers = (code) => {
@@ -451,31 +436,33 @@ export default function CodeAnalyzer() {
 
   // Sync scroll
   const handleInputScroll = (e) => {
-    const scrollTop = e.target.scrollTop;
     if (inputHighlightRef.current) {
-      inputHighlightRef.current.scrollTop = scrollTop;
+      inputHighlightRef.current.scrollTop = e.target.scrollTop;
+      inputHighlightRef.current.scrollLeft = e.target.scrollLeft;
     }
   };
 
-  /* ================= FILE UPLOAD ================= */
+  // File upload
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
     const reader = new FileReader();
-    reader.onload = () => setInputCode(reader.result);
+    reader.onload = () => {
+      setInputCode(reader.result);
+    };
     reader.readAsText(file);
   };
 
-  /* ================= CAMERA UPLOAD ================= */
+  // Camera upload
   const handlePhotoUpload = (e) => {
-    alert("📸 Photo captured.\n(For demo: OCR integration can be added later)");
+    // Placeholder for OCR functionality
+    alert("Photo upload feature coming soon!");
   };
 
-  /* ================= ANALYZE ================= */
+  // Analyze code
   const handleAnalyze = async () => {
     if (!inputCode.trim()) {
-      alert("⚠️ Please paste or upload code first.");
+      setError("Please enter some code to analyze.");
       return;
     }
 
@@ -483,19 +470,11 @@ export default function CodeAnalyzer() {
     setError("");
     setAnalysisResult(null);
 
-    const currentUser = getCurrentUser();
-
     try {
       const response = await fetch(`${API_SERVER}/api/analyze`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          inputCode,
-          userId: currentUser?.id,
-          language
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ inputCode, language, userId: getCurrentUser()?.id }),
       });
 
       if (!response.ok) {
@@ -506,7 +485,7 @@ export default function CodeAnalyzer() {
       setAnalysisResult(data);
     } catch (err) {
       console.error("Analysis error:", err);
-      setError("Failed to analyze code. Please make sure the backend server is running.");
+      setError("Failed to analyze code. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -514,200 +493,203 @@ export default function CodeAnalyzer() {
 
   // Get current tab content
   const getTabContent = () => {
-    if (!analysisResult) return null;
+    if (loading) return <div className="ca-loading-message">⏳ Analyzing your code...</div>;
+    if (error) return <div className="ca-error-message">❌ {error}</div>;
+    if (!analysisResult) return <div className="ca-empty-note">Paste your code and click "Analyze Code" to see results</div>;
 
     switch (activeTab) {
-      case "explanation":
-        return analysisResult.explanation;
-      case "errors":
-        return analysisResult.errors;
-      case "complexity":
-        return analysisResult.complexity;
-      case "flowchart":
-        return analysisResult.flowchart;
-      case "optimized":
-        return analysisResult.optimized;
-      default:
-        return null;
+      case "explanation": return <ExplanationRenderer value={analysisResult.explanation} />;
+      case "errors": return <ErrorsRenderer value={analysisResult.errors} />;
+      case "complexity": return <ComplexityRenderer value={analysisResult.complexity} />;
+      case "flowchart": return <FlowchartRenderer value={analysisResult.flowchart} />;
+      case "optimized": return <OptimizedRenderer value={analysisResult.optimized} />;
+      default: return <div className="ca-empty-note">Select a tab to view results</div>;
     }
   };
 
+  // Toggle maximize functions
+  const toggleEditorMaximize = () => {
+    setIsEditorMaximized(!isEditorMaximized);
+    setIsResultsMaximized(false);
+  };
+
+  const toggleResultsMaximize = () => {
+    setIsResultsMaximized(!isResultsMaximized);
+    setIsEditorMaximized(false);
+  };
+
+  // Clear code
+  const handleClear = () => {
+    setInputCode("");
+    setAnalysisResult(null);
+    setError("");
+    setLanguageMismatch(null);
+  };
+
   return (
-    <div className="dashboard-container code-analyzer-page">
-      <h1 className="welcome-text page-title-left">Code Analyzer</h1>
-      <p className="sub-text page-subtitle">
-        Upload your code and get AI-powered insights, explanations, and optimizations.
-      </p>
+    <div className="ca-page problem-solving-page">
+      {/* HEADER */}
+      <div className="ps-header">
+        <div className="ps-header-left">
+          <h1 className="ps-page-title">Code Analyzer</h1>
+          <p className="ps-page-subtitle">Get AI-powered insights, explanations, and optimizations</p>
+        </div>
+      </div>
 
-      <div className="analyzer-grid">
+      {/* MAIN LAYOUT */}
+      <div className="ps-main-layout">
+        <div className="ps-panels-row">
 
-        {/* LEFT CARD */}
-        <div className="analyzer-card">
-          <div className="analyzer-card-header">
-            <div className="analyzer-card-title">
-              <span className="code-icon">&lt;/&gt;</span>
-              <span>Code Input</span>
-              <span className="analyzer-lang-badge">
-                {langIcons[language]} {language}
-              </span>
+          {/* LEFT PANEL - Code Editor */}
+          <div className={`ps-editor-panel ${isEditorMaximized ? 'maximized' : ''} ${isResultsMaximized ? 'hidden' : ''}`}>
+            {/* Editor Toolbar */}
+            <div className="ps-editor-toolbar">
+              <div className="ps-toolbar-left">
+                <span className="ps-code-icon">&lt;/&gt;</span>
+                <span className="ps-toolbar-title">Code Input</span>
+                <select
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value)}
+                  className="ca-lang-select"
+                >
+                  <option>JavaScript</option>
+                  <option>Python</option>
+                  <option>C++</option>
+                  <option>Java</option>
+                </select>
+              </div>
+              <div className="ps-toolbar-right">
+                <button className="ps-toolbar-btn upload" onClick={() => fileInputRef.current.click()} title="Upload file">
+                  <span>📁</span> Upload
+                </button>
+                <button
+                  className="ps-toolbar-btn maximize"
+                  onClick={toggleEditorMaximize}
+                  title={isEditorMaximized ? "Minimize" : "Maximize"}
+                >
+                  {isEditorMaximized ? (
+                    <><span>⊖</span> Minimize</>
+                  ) : (
+                    <><span>⊕</span> Maximize</>
+                  )}
+                </button>
+              </div>
             </div>
-            <div className="dropdown-with-label">
-              <label className="dropdown-label">Language</label>
-              <select
-                className="analyzer-lang-select"
-                value={language}
-                onChange={(e) => setLanguage(e.target.value)}
-              >
-                <option>JavaScript</option>
-                <option>Python</option>
-                <option>C++</option>
-                <option>Java</option>
-              </select>
-            </div>
-          </div>
 
-          {/* Language Mismatch Warning */}
-          {languageMismatch && (
-            <div className="language-mismatch-warning">
-              <span className="warning-icon">⚠️</span>
-              <span className="warning-text">
-                It looks like you're writing <span className="warning-highlight">{languageMismatch.detected}</span> code,
-                but <span className="warning-highlight">{languageMismatch.selected}</span> is selected.
-              </span>
-              <button
-                className="fix-btn"
-                onClick={() => setLanguage(languageMismatch.detected)}
-              >
-                Switch to {languageMismatch.detected}
-              </button>
-            </div>
-          )}
+            {/* Language Mismatch Warning */}
+            {languageMismatch && (
+              <div className="ps-mismatch-warning">
+                <span className="warning-icon">⚠️</span>
+                <span>
+                  Detected <strong>{languageMismatch.detected}</strong> code but <strong>{languageMismatch.selected}</strong> is selected.
+                </span>
+                <button onClick={() => setLanguage(languageMismatch.detected)}>
+                  Switch to {languageMismatch.detected}
+                </button>
+              </div>
+            )}
 
-          {/* ACTION BUTTONS */}
-          <div className="upload-buttons">
-            <button
-              className="action-btn"
-              onClick={() => fileInputRef.current.click()}
-            >
-              ⬆ Upload File
-            </button>
+            {/* Hidden file inputs */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              style={{ display: "none" }}
+              accept=".js,.py,.java,.cpp,.txt"
+              onChange={handleFileUpload}
+            />
+            <input
+              type="file"
+              ref={cameraInputRef}
+              style={{ display: "none" }}
+              accept="image/*"
+              capture="environment"
+              onChange={handlePhotoUpload}
+            />
 
-            <button
-              className="action-btn"
-              onClick={() => cameraInputRef.current.click()}
-            >
-              📷 Take Photo
-            </button>
-
-            <button
-              className="action-btn clear-btn"
-              onClick={() => {
-                setInputCode("");
-                setAnalysisResult(null);
-                setError("");
-                setLanguageMismatch(null);
-              }}
-              disabled={!inputCode}
-            >
-              🗑️ Clear
-            </button>
-          </div>
-
-          {/* HIDDEN INPUTS */}
-          <input
-            type="file"
-            ref={fileInputRef}
-            style={{ display: "none" }}
-            accept=".js,.py,.java,.cpp,.txt"
-            onChange={handleFileUpload}
-          />
-
-          <input
-            type="file"
-            ref={cameraInputRef}
-            style={{ display: "none" }}
-            accept="image/*"
-            capture="environment"
-            onChange={handlePhotoUpload}
-          />
-
-          {/* VS CODE EDITOR */}
-          <div className="vscode-editor analyzer-editor">
-            <div className="vscode-line-numbers">
-              <pre>{getLineNumbers(inputCode)}</pre>
-            </div>
-            <div className="vscode-editor-wrapper">
-              <pre
-                ref={inputHighlightRef}
-                className="vscode-highlight-layer"
-                aria-hidden="true"
-              >
-                <code
-                  dangerouslySetInnerHTML={{
-                    __html: highlightCode(inputCode, language) + (inputCode.endsWith('\n') ? ' ' : '\n ')
-                  }}
+            {/* Code Editor */}
+            <div className="ps-code-editor">
+              <div className="ps-line-numbers">
+                <pre>{getLineNumbers(inputCode)}</pre>
+              </div>
+              <div className="ps-editor-wrapper">
+                <pre
+                  ref={inputHighlightRef}
+                  className="ps-highlight-layer"
+                  aria-hidden="true"
+                >
+                  <code
+                    dangerouslySetInnerHTML={{
+                      __html: highlightCode(inputCode, language) + (inputCode.endsWith('\n') ? ' ' : '\n ')
+                    }}
+                  />
+                </pre>
+                <textarea
+                  className="ps-code-textarea"
+                  placeholder="// Paste your code here to analyze..."
+                  value={inputCode}
+                  onChange={(e) => setInputCode(e.target.value)}
+                  onScroll={handleInputScroll}
+                  spellCheck="false"
                 />
-              </pre>
-              <textarea
-                className="vscode-textarea-overlay"
-                placeholder="Paste your code here..."
-                value={inputCode}
-                onChange={(e) => setInputCode(e.target.value)}
-                onScroll={handleInputScroll}
-                spellCheck="false"
-              />
+              </div>
+            </div>
+
+            {/* Footer with Clear and Analyze Buttons */}
+            <div className="ca-analyze-footer">
+              <button className="ca-clear-btn" onClick={handleClear} disabled={!inputCode && !analysisResult}>
+                <span>🗑️</span> Clear All
+              </button>
+              <button className="ca-analyze-btn" onClick={handleAnalyze} disabled={loading || !inputCode.trim()}>
+                <span className="btn-icon">▶</span>
+                {loading ? "Analyzing..." : "Analyze Code"}
+              </button>
             </div>
           </div>
 
-          <button
-            className="analyze-btn"
-            onClick={handleAnalyze}
-            disabled={loading}
-          >
-            {loading ? "Analyzing..." : "▶ Analyze Code"}
-          </button>
-        </div>
-
-        {/* RIGHT CARD - ANALYSIS RESULTS */}
-        <div className="analyzer-card analyzer-results-card">
-          <div className="analysis-header">
-            <span className="analysis-header-icon">✨</span>
-            <h3>AI Analysis Results</h3>
-          </div>
-
-          <div className="analysis-tab-bar">
-            {tabConfig.map((tab) => (
+          {/* RIGHT PANEL - Analysis Results */}
+          <div className={`ps-description-panel ${isResultsMaximized ? 'maximized' : ''} ${isEditorMaximized ? 'hidden' : ''}`}>
+            <div className="ps-panel-header">
+              <div className="ps-tabs">
+                <button className="ps-tab active">
+                  <span className="tab-icon">✨</span>
+                  AI Analysis
+                </button>
+              </div>
               <button
-                key={tab.key}
-                className={`analysis-tab-btn ${activeTab === tab.key ? "active" : ""}`}
-                onClick={() => setActiveTab(tab.key)}
+                className="ps-toolbar-btn maximize"
+                onClick={toggleResultsMaximize}
+                title={isResultsMaximized ? "Minimize" : "Maximize"}
               >
-                <span className="tab-icon">{tab.icon}</span>
-                {tab.label}
+                {isResultsMaximized ? (
+                  <><span>⊖</span> Minimize</>
+                ) : (
+                  <><span>⊕</span> Maximize</>
+                )}
               </button>
-            ))}
+            </div>
+
+            {/* Tab Bar */}
+            <div className="ca-tab-bar">
+              {tabConfig.map((tab) => (
+                <button
+                  key={tab.key}
+                  className={`ca-tab-btn ${activeTab === tab.key ? "active" : ""}`}
+                  onClick={() => setActiveTab(tab.key)}
+                >
+                  <span className="tab-icon">{tab.icon}</span>
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Results Content */}
+            <div className="ps-panel-content ca-results-content">
+              {getTabContent()}
+            </div>
           </div>
 
-          <div className="analysis-box">
-            {loading && <div className="loading-message">⏳ Analyzing your code...</div>}
-            {error && <div className="error-message">❌ {error}</div>}
-            {!loading && !error && !analysisResult && (
-              <div className="empty-note">Paste your code and click "Analyze Code" to see results</div>
-            )}
-            {!loading && !error && analysisResult && (
-              <>
-                {activeTab === "explanation" && <ExplanationRenderer value={analysisResult.explanation} />}
-                {activeTab === "errors" && <ErrorsRenderer value={analysisResult.errors} />}
-                {activeTab === "complexity" && <ComplexityRenderer value={analysisResult.complexity} />}
-                {activeTab === "flowchart" && <FlowchartRenderer value={analysisResult.flowchart} />}
-                {activeTab === "optimized" && <OptimizedRenderer value={analysisResult.optimized} />}
-              </>
-            )}
-          </div>
         </div>
-
       </div>
     </div>
   );
 }
-

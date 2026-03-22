@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
+import ForgotPassword from "./pages/ForgotPassword";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import CodeAnalyzer from "./pages/CodeAnalyzer";
@@ -11,27 +12,46 @@ import UploadProject from "./pages/UploadProject";
 import ProfileSettings from "./pages/ProfileSettings";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminReports from "./pages/AdminReports";
+import NotificationsPage from "./pages/NotificationsPage";
+import ConnectionsPage from "./pages/ConnectionsPage";
+import Saved from "./pages/Saved";
+import InsightsPage from "./pages/InsightsPage";
 import OAuthCallback from "./pages/OAuthCallback";
-import Sidebar from "./components/Sidebar";
+import ContestList from "./pages/ContestList";
+import ContestDetail from "./pages/ContestDetail";
+import CreateContest from "./pages/CreateContest";
+import ContestArena from "./pages/ContestArena";
+import TopNav from "./components/TopNav";
+import LeftSidebar from "./components/LeftSidebar";
+import MenuDropdown from "./components/MenuDropdown";
 import ReportModal from "./components/ReportModal";
 import "./login.css";
 
 function App() {
-  const [page, setPage] = useState("home");   // default = home page
+  const [page, setPage] = useState("home");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userRole, setUserRole] = useState("User"); // default role is User
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [userRole, setUserRole] = useState("User");
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showMenuDropdown, setShowMenuDropdown] = useState(false);
+  const [userData, setUserData] = useState(null);
+  const [dashboardKey, setDashboardKey] = useState(0);
 
-  // Theme state - check localStorage for saved preference, default to dark
+  // Wrapper for setPage that refreshes dashboard when navigating to it
+  const handleSetPage = (newPage) => {
+    if (newPage === "dashboard") {
+      setDashboardKey(prev => prev + 1); // Force Dashboard refresh
+    }
+    setPage(newPage);
+  };
+
+  // Theme state
   const [isDarkTheme, setIsDarkTheme] = useState(() => {
     const saved = localStorage.getItem("codegenius-theme");
-    return saved ? saved === "dark" : true; // Default to dark theme
+    return saved ? saved === "dark" : true;
   });
 
-  // Restore login session from localStorage on page load
+  // Restore login session
   useEffect(() => {
-    // Check if this is an OAuth callback
     if (window.location.pathname === "/oauth/callback") {
       setPage("oauth-callback");
       return;
@@ -42,11 +62,11 @@ function App() {
 
     if (token && user) {
       try {
-        const userData = JSON.parse(user);
+        const parsedUser = JSON.parse(user);
         setIsLoggedIn(true);
-        setUserRole(userData.role || "User");
-        // Set starting page based on role
-        if (userData.role === "Admin") {
+        setUserRole(parsedUser.role || "User");
+        setUserData(parsedUser);
+        if (parsedUser.role === "Admin") {
           setPage("admin");
         } else {
           setPage("dashboard");
@@ -59,106 +79,131 @@ function App() {
     }
   }, []);
 
-  // Apply theme class to body whenever theme changes
+  // Apply theme
   useEffect(() => {
     if (isDarkTheme) {
       document.body.classList.add("dark-theme");
     } else {
       document.body.classList.remove("dark-theme");
     }
-    // Save to localStorage
     localStorage.setItem("codegenius-theme", isDarkTheme ? "dark" : "light");
   }, [isDarkTheme]);
 
-  // Toggle theme function
   const toggleTheme = () => {
     setIsDarkTheme(prev => !prev);
   };
 
-  // Handle logout - reset user role
   const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
     setIsLoggedIn(false);
     setUserRole("User");
+    setUserData(null);
     setPage("home");
   };
 
   return (
     <>
-      {/* 1️⃣ HOME PAGE should show FIRST */}
+      {/* HOME PAGE */}
       {page === "home" && (
         <Home setPage={setPage} />
       )}
 
-      {/* 2️⃣ LOGIN PAGE shows ONLY after clicking Get Started */}
+      {/* LOGIN PAGE */}
       {page === "login" && !isLoggedIn && (
         <Login setPage={setPage} setIsLoggedIn={setIsLoggedIn} setUserRole={setUserRole} />
       )}
 
-      {/* 2.5️⃣ REGISTER PAGE */}
+      {/* REGISTER PAGE */}
       {page === "register" && !isLoggedIn && (
         <Register setPage={setPage} />
       )}
 
-      {/* 2.6️⃣ OAUTH CALLBACK PAGE */}
+      {/* FORGOT PASSWORD PAGE */}
+      {page === "forgot-password" && !isLoggedIn && (
+        <ForgotPassword setPage={setPage} />
+      )}
+
+      {/* OAUTH CALLBACK PAGE */}
       {page === "oauth-callback" && (
         <OAuthCallback setIsLoggedIn={setIsLoggedIn} setUserRole={setUserRole} setPage={setPage} />
       )}
 
-      {/* 3️⃣ AFTER LOGIN → Show Dashboard + Sidebar */}
+      {/* LOGGED IN - Dashboard Layout */}
       {isLoggedIn && (
-        <div className="layout">
-          {/* Mobile Header */}
-          <header className="mobile-header">
-            <button
-              className="mobile-menu-btn"
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              aria-label="Toggle sidebar"
-            >
-              ☰
-            </button>
-            <img src={require('./assets/logo.png')} alt="CodeGenius" className="mobile-logo-img" />
-          </header>
-
-          <Sidebar
-            setPage={setPage}
+        <div className="layout-topnav">
+          {/* Top Navigation Bar - All Navigation */}
+          <TopNav
+            setPage={handleSetPage}
             activePage={page}
-            isOpen={sidebarOpen}
-            onClose={() => setSidebarOpen(false)}
             userRole={userRole}
+            isDark={isDarkTheme}
+            toggleTheme={toggleTheme}
             onLogout={handleLogout}
-            onReportClick={() => setShowReportModal(true)}
+            onMenuClick={() => setShowMenuDropdown(!showMenuDropdown)}
           />
 
-          {/* Main content area */}
-          <main className="main-content">
-            {/* Curved Header Bar */}
-            <div className="page-header-bar">
-              <h1 className="page-header-title">CodeGenius</h1>
-            </div>
+          {/* Left Sidebar - Only for regular users */}
+          {userRole !== "Admin" && (
+            <LeftSidebar
+              setPage={handleSetPage}
+              activePage={page}
+              isDark={isDarkTheme}
+              toggleTheme={toggleTheme}
+              onLogout={handleLogout}
+              user={userData}
+              onReportClick={() => setShowReportModal(true)}
+            />
+          )}
 
-            {page === "dashboard" && <Dashboard setPage={setPage} />}
+          {/* Menu Dropdown - Only for regular users */}
+          {userRole !== "Admin" && (
+            <MenuDropdown
+              isOpen={showMenuDropdown}
+              onClose={() => setShowMenuDropdown(false)}
+              setPage={handleSetPage}
+              isDark={isDarkTheme}
+              toggleTheme={toggleTheme}
+              onLogout={handleLogout}
+              user={userData}
+            />
+          )}
+
+          {/* Main content area */}
+          <main className={`main-content${userRole === "Admin" ? " admin-main-content" : ""}`}>
+            {page === "dashboard" && <Dashboard key={dashboardKey} setPage={handleSetPage} />}
             {page === "analyzer" && <CodeAnalyzer />}
             {page === "converter" && <CodeConverter />}
             {page === "problemSolving" && <ProblemSolving />}
             {page === "leaderboard" && <Leaderboard />}
             {page === "upload" && <UploadProject />}
-            {page === "profile" && <ProfileSettings isDark={isDarkTheme} toggleTheme={toggleTheme} setIsLoggedIn={setIsLoggedIn} setPage={setPage} onLogout={handleLogout} />}
-            {page === "admin" && userRole === "Admin" && <AdminDashboard onLogout={handleLogout} isDark={isDarkTheme} toggleTheme={toggleTheme} />}
+            {page === "profile" && <ProfileSettings isDark={isDarkTheme} toggleTheme={toggleTheme} setIsLoggedIn={setIsLoggedIn} setPage={handleSetPage} onLogout={handleLogout} />}
+            {page === "admin" && userRole === "Admin" && <AdminDashboard onLogout={handleLogout} isDark={isDarkTheme} toggleTheme={toggleTheme} setPage={handleSetPage} />}
             {page === "reports" && userRole === "Admin" && <AdminReports />}
+            {page === "notifications" && <NotificationsPage setPage={handleSetPage} />}
+            {page === "connections" && <ConnectionsPage setPage={handleSetPage} />}
+            {page === "saved" && <Saved />}
+            {page === "insights" && <InsightsPage setPage={handleSetPage} />}
+
+            {/* Contest System Pages */}
+            {page === "contests" && <ContestList setPage={handleSetPage} />}
+            {page === "createContest" && <CreateContest setPage={handleSetPage} />}
+            {page?.name === "contestDetail" && <ContestDetail contestId={page.contestId} setPage={handleSetPage} />}
+            {page?.name === "contestArena" && <ContestArena contestId={page.contestId} setPage={handleSetPage} />}
+            {page?.name === "contestPractice" && <ContestArena contestId={page.contestId} setPage={handleSetPage} mode="practice" />}
           </main>
 
-          {/* Report Modal */}
-          <ReportModal
-            isOpen={showReportModal}
-            onClose={() => setShowReportModal(false)}
-          />
+          {/* Report Modal - Only for regular users */}
+          {userRole !== "Admin" && (
+            <ReportModal
+              isOpen={showReportModal}
+              onClose={() => setShowReportModal(false)}
+            />
+          )}
         </div>
       )}
-
     </>
   );
 }
 
 export default App;
-
-
