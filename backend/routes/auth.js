@@ -155,14 +155,33 @@ router.post("/login", async (req, res) => {
         // Role check removed - mobile app handles role-based navigation based on user.role from database
         // The frontend role selector is now just for UX, not authentication
 
-        // Update last login (non-blocking)
+        // Update last login and streak (non-blocking)
         try {
             await query(
-                "UPDATE users SET last_login_at = NOW(), last_activity_at = NOW() WHERE id = $1",
+                `UPDATE users 
+                 SET 
+                   current_streak = CASE
+                     WHEN last_login_at IS NULL THEN 1
+                     WHEN last_login_at::DATE = CURRENT_DATE THEN GREATEST(COALESCE(current_streak, 1), 1)
+                     WHEN last_login_at::DATE = CURRENT_DATE - 1 THEN COALESCE(current_streak, 0) + 1
+                     ELSE 1
+                   END,
+                   longest_streak = GREATEST(
+                     COALESCE(longest_streak, 0),
+                     CASE
+                       WHEN last_login_at IS NULL THEN 1
+                       WHEN last_login_at::DATE = CURRENT_DATE THEN GREATEST(COALESCE(current_streak, 1), 1)
+                       WHEN last_login_at::DATE = CURRENT_DATE - 1 THEN COALESCE(current_streak, 0) + 1
+                       ELSE 1
+                     END
+                   ),
+                   last_login_at = NOW(), 
+                   last_activity_at = NOW() 
+                 WHERE id = $1`,
                 [user.id]
             );
         } catch (updateError) {
-            console.log("Last login update failed (non-blocking):", updateError.message);
+            console.log("Last login and streak update failed (non-blocking):", updateError.message);
         }
 
         // Log successful login (non-blocking)

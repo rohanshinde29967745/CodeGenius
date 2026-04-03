@@ -1,15 +1,12 @@
-// Sidebar.jsx – Ultra Premium Version with Mobile Support
 import React from "react";
-import "../App.css";
+import "../index.css";
 
 function Sidebar({ setPage, activePage, isOpen, onClose, userRole, onLogout, onReportClick }) {
-  // Admin menu - only Admin Dashboard
   const adminMenu = [
     { key: "admin", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" /></svg>, label: "Dashboard" },
     { key: "reports", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" /></svg>, label: "Reports" },
   ];
 
-  // User menu - all regular pages (no Admin Dashboard)
   const userMenu = [
     { key: "dashboard", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg>, label: "Dashboard" },
     { key: "analyzer", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16,18 22,12 16,6" /><polyline points="8,6 2,12 8,18" /></svg>, label: "Code Analyzer" },
@@ -20,12 +17,11 @@ function Sidebar({ setPage, activePage, isOpen, onClose, userRole, onLogout, onR
     { key: "profile", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4" /><path d="M20 21a8 8 0 0 0-16 0" /></svg>, label: "Profile Settings" },
   ];
 
-  // Use admin menu if Admin, otherwise user menu
   const menu = userRole === "Admin" ? adminMenu : userMenu;
 
   const handleItemClick = (key) => {
     setPage(key);
-    if (onClose) onClose(); // Close sidebar on mobile after selection
+    if (onClose) onClose();
   };
 
   const handleLogout = () => {
@@ -35,55 +31,121 @@ function Sidebar({ setPage, activePage, isOpen, onClose, userRole, onLogout, onR
 
   return (
     <>
-      {/* Overlay for mobile */}
-      <div
-        className={`sidebar-overlay ${isOpen ? "show" : ""}`}
-        onClick={onClose}
-      />
+      {isOpen && (
+        <div 
+          onClick={onClose}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 40
+          }}
+        />
+      )}
 
-      <aside className={`sidebar-ultra ${isOpen ? "open" : ""}`}>
-        <div className="sidebar-brand">
-          <img src={require('../assets/logo.png')} alt="CodeGenius" className="sidebar-logo" />
+      <aside style={{
+        position: 'fixed',
+        top: 0,
+        left: isOpen ? 0 : '-100%',
+        width: '280px',
+        height: '100vh',
+        backgroundColor: 'var(--bg-secondary)',
+        borderRight: '1px solid var(--border-color)',
+        transition: 'left 0.3s ease',
+        zIndex: 50,
+        display: 'flex',
+        flexDirection: 'column',
+        padding: '1.5rem',
+      }}>
+        <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)', fontSize: '1.25rem', fontWeight: '700' }}>
+            <span style={{
+                background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+            }}>CodeGenius</span>
+            <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>.AI</span>
         </div>
 
-        <ul className="sidebar-ultra-menu">
-          {menu.map((item) => (
-            <li
-              key={item.key}
-              className={`ultra-item ${activePage === item.key ? "active-ultra" : ""}`}
-              onClick={() => handleItemClick(item.key)}
-            >
-              <div className="ultra-icon">{item.icon}</div>
-              <span className="ultra-label">{item.label}</span>
-
-              {activePage === item.key && <div className="active-indicator"></div>}
-            </li>
-          ))}
+        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          {menu.map((item) => {
+            const isActive = activePage === item.key;
+            return (
+              <li
+                key={item.key}
+                onClick={() => handleItemClick(item.key)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '10px 14px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  backgroundColor: isActive ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
+                  color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  fontWeight: isActive ? '600' : '500',
+                  transition: 'background 0.2s, color 0.2s',
+                  border: '1px solid transparent',
+                  borderColor: isActive ? 'var(--border-color)' : 'transparent'
+                }}
+                onMouseEnter={e => {
+                  if(!isActive) {
+                    e.currentTarget.style.backgroundColor = 'var(--hover-bg)';
+                    e.currentTarget.style.color = 'var(--text-primary)';
+                  }
+                }}
+                onMouseLeave={e => {
+                  if(!isActive) {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.color = 'var(--text-secondary)';
+                  }
+                }}
+              >
+                <div style={{ color: isActive ? 'var(--accent-primary)' : 'currentColor' }}>{item.icon}</div>
+                <span>{item.label}</span>
+              </li>
+            );
+          })}
         </ul>
 
-        {/* Logout Button - Only for Admin */}
         {userRole === "Admin" && (
-          <div className="sidebar-logout">
-            <button className="logout-btn" onClick={handleLogout}>
-              <span className="logout-icon">🚪</span>
-              <span className="logout-label">Logout</span>
+          <div style={{ marginTop: 'auto' }}>
+            <button 
+              onClick={handleLogout}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                padding: '10px 14px',
+                backgroundColor: 'transparent',
+                border: 'none',
+                color: 'var(--error-color)',
+                cursor: 'pointer',
+                fontWeight: '500',
+                fontSize: '1rem',
+                borderRadius: '8px',
+                transition: 'background 0.2s'
+              }}
+              onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'}
+              onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+            >
+              <span>🚪</span> Logout
             </button>
           </div>
         )}
 
-        {/* Report Button - Only for Users (bottom of sidebar) */}
         {userRole !== "Admin" && (
-          <div className="sidebar-report" style={{ marginTop: 'auto', padding: '16px' }}>
+          <div style={{ marginTop: 'auto' }}>
             <button
-              className="report-sidebar-btn"
               onClick={onReportClick}
               style={{
                 width: '100%',
                 padding: '12px 16px',
-                background: 'linear-gradient(135deg, #7c3aed, #5b21b6)',
-                color: 'white',
-                border: 'none',
-                borderRadius: '10px',
+                background: 'var(--bg-tertiary)',
+                color: 'var(--text-primary)',
+                border: '1px solid var(--border-color)',
+                borderRadius: '8px',
                 fontSize: '0.9rem',
                 fontWeight: '600',
                 cursor: 'pointer',
@@ -91,10 +153,19 @@ function Sidebar({ setPage, activePage, isOpen, onClose, userRole, onLogout, onR
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '8px',
-                transition: 'transform 0.2s, box-shadow 0.2s',
+                transition: 'border-color 0.2s, background 0.2s',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.borderColor = 'var(--text-secondary)';
+                e.currentTarget.style.background = 'var(--hover-bg)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.borderColor = 'var(--border-color)';
+                e.currentTarget.style.background = 'var(--bg-tertiary)';
               }}
             >
-              <span>📋</span> Report Issue
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" /></svg>
+              Report Issue
             </button>
           </div>
         )}
@@ -104,5 +175,3 @@ function Sidebar({ setPage, activePage, isOpen, onClose, userRole, onLogout, onR
 }
 
 export default Sidebar;
-
-

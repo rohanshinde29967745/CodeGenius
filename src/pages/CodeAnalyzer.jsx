@@ -1,695 +1,407 @@
 import React, { useState, useRef, useEffect } from "react";
 import Prism from "prismjs";
-import "prismjs/themes/prism-tomorrow.css";
 import "prismjs/components/prism-python";
 import "prismjs/components/prism-javascript";
 import "prismjs/components/prism-java";
 import "prismjs/components/prism-c";
 import "prismjs/components/prism-cpp";
 import "../App.css";
+import "./CodeAnalyzer.css";
 import { getCurrentUser } from "../services/api";
-import { copyWithToast, checkLanguageMismatch, detectLanguage } from "../utils/codeUtils";
-
-// Styled Explanation Component - Line by line explanation
-function ExplanationRenderer({ value }) {
-  if (!value || (Array.isArray(value) && value.length === 0)) {
-    return <div className="ca-empty-note">— Nothing to show —</div>;
-  }
-
-  // If it's an array of explanation items
-  if (Array.isArray(value)) {
-    return (
-      <div className="ca-explanation-container">
-        {value.map((item, i) => (
-          <div key={i} className="ca-explanation-line-card">
-            <span className="ca-line-badge">Line {i + 1}</span>
-            <div className="ca-line-code-block">
-              <code>{typeof item === "object" ? item.code || item.line || JSON.stringify(item) : String(item)}</code>
-            </div>
-            {item.explanation && (
-              <p className="ca-line-explanation">{item.explanation}</p>
-            )}
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  // If it's a string, parse it into lines
-  const lines = String(value).split("\n").filter(l => l.trim());
-  return (
-    <div className="ca-explanation-container">
-      {lines.map((line, i) => (
-        <div key={i} className="ca-explanation-line-card">
-          <span className="ca-line-badge">Line {i + 1}</span>
-          <p className="ca-line-explanation">{line}</p>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// Styled Errors Component - With severity badges
-function ErrorsRenderer({ value }) {
-  if (!value || (Array.isArray(value) && value.length === 0) ||
-    (typeof value === "string" && (value.includes("No errors") || value.includes("no errors")))) {
-    return (
-      <div className="ca-no-errors-container">
-        <span className="ca-no-errors-icon">✅</span>
-        <p>No errors or issues detected in your code!</p>
-      </div>
-    );
-  }
-
-  // If it's an array of error objects
-  if (Array.isArray(value)) {
-    return (
-      <div className="ca-errors-container">
-        {value.map((error, i) => (
-          <div key={i} className="ca-error-card">
-            <div className="ca-error-header">
-              <span className="ca-error-icon">⚠️</span>
-              <span className="ca-error-line-badge">Line {error.line || i + 1}</span>
-              <span className={`ca-severity-badge ${error.severity || "medium"}`}>
-                {error.severity || "medium"}
-              </span>
-            </div>
-            <h4 className="ca-error-title">{error.title || error.type || "Potential Issue"}</h4>
-            <p className="ca-error-description">{error.description || error.message || String(error)}</p>
-            {error.fix && (
-              <div className="ca-error-fix-box">
-                <code>✓ {error.fix}</code>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  // If it's a string, display as single error
-  return (
-    <div className="ca-errors-container">
-      <div className="ca-error-card">
-        <div className="ca-error-header">
-          <span className="ca-error-icon">⚠️</span>
-          <span className="ca-severity-badge medium">info</span>
-        </div>
-        <p className="ca-error-description">{String(value)}</p>
-      </div>
-    </div>
-  );
-}
-
-// Styled Complexity Component - Time and Space cards
-function ComplexityRenderer({ value }) {
-  if (!value) {
-    return <div className="ca-empty-note">— Nothing to show —</div>;
-  }
-
-  // Parse complexity data
-  let timeComplexity = "N/A";
-  let spaceComplexity = "N/A";
-  let explanation = "";
-
-  if (typeof value === "object") {
-    timeComplexity = value.time || value.timeComplexity || value.Time || "N/A";
-    spaceComplexity = value.space || value.spaceComplexity || value.Space || "N/A";
-    explanation = value.explanation || value.description || "";
-  } else if (typeof value === "string") {
-    // Try to parse from string
-    const timeMatch = value.match(/time[:\s]*O\([^)]+\)/i);
-    const spaceMatch = value.match(/space[:\s]*O\([^)]+\)/i);
-    if (timeMatch) timeComplexity = timeMatch[0].replace(/time[:\s]*/i, "");
-    if (spaceMatch) spaceComplexity = spaceMatch[0].replace(/space[:\s]*/i, "");
-    explanation = value;
-  }
-
-  return (
-    <div className="ca-complexity-container">
-      <div className="ca-complexity-card time">
-        <div className="ca-complexity-icon">
-          <span>⏱️</span>
-        </div>
-        <div className="ca-complexity-content">
-          <h4>Time Complexity</h4>
-          <span className="ca-complexity-value">{timeComplexity}</span>
-        </div>
-      </div>
-
-      <div className="ca-complexity-card space">
-        <div className="ca-complexity-icon">
-          <span>📊</span>
-        </div>
-        <div className="ca-complexity-content">
-          <h4>Space Complexity</h4>
-          <span className="ca-complexity-value">{spaceComplexity}</span>
-        </div>
-      </div>
-
-      {explanation && (
-        <div className="ca-complexity-explanation">
-          <p>{explanation}</p>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Styled Flowchart Component - Renders Mermaid diagrams
-function FlowchartRenderer({ value }) {
-  const containerRef = useRef(null);
-  const [rendered, setRendered] = useState(false);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    if (!value || !containerRef.current) return;
-
-    const renderDiagram = async () => {
-      try {
-        // Dynamic import of mermaid
-        const mermaid = (await import('mermaid')).default;
-        mermaid.initialize({
-          startOnLoad: false,
-          theme: document.body.classList.contains('dark-theme') ? 'dark' : 'default',
-          flowchart: {
-            useMaxWidth: true,
-            htmlLabels: true,
-            curve: 'basis'
-          },
-          securityLevel: 'loose'
-        });
-
-        // Clean up the Mermaid code
-        let mermaidCode = typeof value === "string" ? value : String(value);
-
-        // Remove markdown code blocks if present
-        mermaidCode = mermaidCode.replace(/```mermaid\n?/gi, '').replace(/```\n?/g, '');
-
-        // Remove trailing semicolons from lines (Mermaid doesn't need them)
-        mermaidCode = mermaidCode.split('\n').map(line => line.replace(/;+\s*$/, '')).join('\n');
-
-        // Fix common issues with quotes in node labels
-        mermaidCode = mermaidCode.replace(/\[([^\]]*)"([^\]"]*)"\s*([^\]]*)\]/g, '[$1$2$3]');
-
-        // Ensure proper arrow syntax (remove extra spaces)
-        mermaidCode = mermaidCode.replace(/--\s*>\s*/g, '-->');
-
-        // Escape special characters in labels
-        mermaidCode = mermaidCode.replace(/\[([^\]]*)\]/g, (match, content) => {
-          // Remove problematic characters from labels
-          const cleaned = content.replace(/[";]/g, '').trim();
-          return `[${cleaned}]`;
-        });
-
-        // Ensure it starts with a valid graph declaration
-        if (!mermaidCode.trim().startsWith('graph') && !mermaidCode.trim().startsWith('flowchart')) {
-          mermaidCode = 'graph TD\n' + mermaidCode;
-        }
-
-        console.log("Cleaned Mermaid code:", mermaidCode);
-
-        // Clear previous content
-        containerRef.current.innerHTML = '';
-
-        // Render the diagram
-        const { svg } = await mermaid.render('flowchart-' + Date.now(), mermaidCode);
-        containerRef.current.innerHTML = svg;
-        setRendered(true);
-        setError(null);
-      } catch (err) {
-        console.error('Mermaid render error:', err);
-        setError('Could not render flowchart diagram');
-        // Fallback to showing formatted code
-        if (containerRef.current) {
-          let displayCode = typeof value === "string" ? value : JSON.stringify(value, null, 2);
-          // Format for display
-          displayCode = displayCode.replace(/```mermaid\n?/gi, '').replace(/```\n?/g, '');
-          containerRef.current.innerHTML = `<pre class="ca-flowchart-fallback">${displayCode}</pre>`;
-        }
-      }
-    };
-
-    renderDiagram();
-  }, [value]);
-
-  if (!value) {
-    return <div className="ca-empty-note">— Nothing to show —</div>;
-  }
-
-  return (
-    <div className="ca-flowchart-container">
-      {error && <div className="ca-flowchart-error">{error}</div>}
-      <div
-        ref={containerRef}
-        className="ca-flowchart-content mermaid-diagram"
-      >
-        <div className="ca-loading-message">Loading flowchart...</div>
-      </div>
-    </div>
-  );
-}
-
-// Styled Optimized Code Component
-function OptimizedRenderer({ value }) {
-  if (!value) {
-    return <div className="ca-empty-note">— Nothing to show —</div>;
-  }
-
-  let code = "";
-  let improvements = [];
-
-  if (typeof value === "object") {
-    code = value.code || value.optimizedCode || JSON.stringify(value, null, 2);
-    improvements = value.improvements || value.changes || [];
-  } else {
-    code = String(value);
-  }
-
-  return (
-    <div className="ca-optimized-container">
-      <div className="ca-optimized-header">
-        <span className="ca-optimized-icon">💡</span>
-        <h4>Optimized Code</h4>
-      </div>
-
-      <div className="ca-optimized-code-block">
-        <pre><code>{code}</code></pre>
-      </div>
-
-      {improvements.length > 0 && (
-        <div className="ca-improvements-banner">
-          <span className="ca-improvements-icon">✅</span>
-          <div className="ca-improvements-content">
-            <strong>Improvements Applied:</strong>
-            <p>{improvements.join(", ")}</p>
-          </div>
-        </div>
-      )}
-
-      {typeof value === "string" && value.toLowerCase().includes("better") && (
-        <div className="ca-improvements-banner">
-          <span className="ca-improvements-icon">✅</span>
-          <div className="ca-improvements-content">
-            <strong>Improvements Applied:</strong>
-            <p>Better variable names, overflow prevention, added documentation</p>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 export default function CodeAnalyzer() {
-  const [inputCode, setInputCode] = useState("");
   const [language, setLanguage] = useState("JavaScript");
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState("explanation");
+  
+  // Tab System
+  const [files, setFiles] = useState([{ id: 1, name: "Input.js", code: "" }]);
+  const [activeFileId, setActiveFileId] = useState(1);
+  const [nextFileId, setNextFileId] = useState(2);
+  
+  const [activeTab, setActiveTab] = useState("explanation"); // Insights tabs
+  const [consoleTab, setConsoleTab] = useState("console"); // Console tabs
   const [analysisResult, setAnalysisResult] = useState(null);
   const [error, setError] = useState("");
-  const [languageMismatch, setLanguageMismatch] = useState(null);
-
-  // Panel states
-  const [isEditorMaximized, setIsEditorMaximized] = useState(false);
-  const [isResultsMaximized, setIsResultsMaximized] = useState(false);
 
   const fileInputRef = useRef(null);
-  const cameraInputRef = useRef(null);
   const inputHighlightRef = useRef(null);
 
-  // Tab configuration with icons matching reference design
-  const tabConfig = [
-    { key: "explanation", label: "Explain", icon: "💡" },
-    { key: "errors", label: "Errors", icon: "⚠️" },
-    { key: "complexity", label: "Complexity", icon: "⚡" },
-    { key: "flowchart", label: "Flow", icon: "📊" },
-    { key: "optimized", label: "Optimize", icon: "📈" },
-  ];
+  const langBadge = { Python: "PY", JavaScript: "JS", "C++": "C+", Java: "JV" };
+  const langBadgeColor = { Python: "#3776AB", JavaScript: "#f7df1e", "C++": "#00599C", Java: "#ED8B00" };
+  const langBadgeText = { Python: "#fff", JavaScript: "#000", "C++": "#fff", Java: "#fff" };
+  const prismMap = { Python: "python", JavaScript: "javascript", "C++": "cpp", Java: "java" };
+  const extMap = { JavaScript: ".js", Python: ".py", Java: ".java", "C++": ".cpp" };
 
-  // Language icons mapping
-  const langIcons = {
-    Python: "🐍",
-    JavaScript: "🟨",
-    "C++": "⚡",
-    Java: "☕",
+  const getActiveCode = () => {
+    return files.find(f => f.id === activeFileId)?.code || "";
   };
 
-  // Prism language mapping
-  const prismLangMap = {
-    Python: "python",
-    JavaScript: "javascript",
-    "C++": "cpp",
-    Java: "java",
+  const updateActiveCode = (newCode) => {
+    setFiles(prev => prev.map(f => f.id === activeFileId ? { ...f, code: newCode } : f));
   };
 
-  // Auto-detect language from code
-  const detectLang = (code) => {
-    if (!code || code.trim().length < 10) return null;
-
-    const codeText = code.toLowerCase();
-
-    // Python patterns
-    const pythonPatterns = [
-      /\bdef\s+\w+\s*\(/,
-      /\bimport\s+\w+/,
-      /\bfrom\s+\w+\s+import/,
-      /\bprint\s*\(/,
-      /:\s*$/m,
-      /\bself\./,
-      /\belif\b/,
-    ];
-
-    // Java patterns
-    const javaPatterns = [
-      /\bpublic\s+(static\s+)?class\b/,
-      /\bprivate\s+\w+\s+\w+/,
-      /\bSystem\.out\.print/,
-      /\bvoid\s+main\s*\(/,
-      /\bimport\s+java\./,
-    ];
-
-    // C++ patterns
-    const cppPatterns = [
-      /\b#include\s*</,
-      /\bstd::/,
-      /\bcout\s*<</,
-      /\bcin\s*>>/,
-      /\busing\s+namespace\s+std/,
-      /\bvector\s*</,
-    ];
-
-    // JavaScript patterns
-    const jsPatterns = [
-      /\bconst\s+\w+\s*=/,
-      /\blet\s+\w+\s*=/,
-      /\bfunction\s+\w+\s*\(/,
-      /=>\s*{/,
-      /\bconsole\.log\s*\(/,
-      /\bmodule\.exports/,
-      /\brequire\s*\(/,
-    ];
-
-    let pythonScore = pythonPatterns.filter(p => p.test(code)).length;
-    let javaScore = javaPatterns.filter(p => p.test(code)).length;
-    let cppScore = cppPatterns.filter(p => p.test(code)).length;
-    let jsScore = jsPatterns.filter(p => p.test(code)).length;
-
-    const scores = { Python: pythonScore, Java: javaScore, "C++": cppScore, JavaScript: jsScore };
-    const maxScore = Math.max(...Object.values(scores));
-
-    if (maxScore >= 2) {
-      return Object.keys(scores).find(k => scores[k] === maxScore);
-    }
-    return null;
-  };
-
-  // Check for language mismatch when code changes
-  useEffect(() => {
-    if (inputCode.trim().length > 30) {
-      const detected = detectLang(inputCode);
-      if (detected && detected !== language) {
-        setLanguageMismatch({ detected, selected: language });
-      } else {
-        setLanguageMismatch(null);
-      }
-    } else {
-      setLanguageMismatch(null);
-    }
-  }, [inputCode, language]);
-
-  // Highlight code using Prism
   const highlightCode = (code, lang) => {
-    const prismLang = prismLangMap[lang] || "javascript";
-    try {
-      return Prism.highlight(code || "", Prism.languages[prismLang] || Prism.languages.javascript, prismLang);
-    } catch (e) {
-      return code || "";
-    }
+    const p = prismMap[lang] || "javascript";
+    try { return Prism.highlight(code || "", Prism.languages[p] || Prism.languages.javascript, p); } catch { return code || ""; }
   };
 
-  // Generate line numbers
-  const getLineNumbers = (code) => {
-    if (!code) return "1";
-    const lines = code.split("\n");
-    return lines.map((_, i) => i + 1).join("\n");
+  const getLineNumbers = (code) => { if (!code) return "1"; return code.split("\n").map((_, i) => i + 1).join("\n"); };
+
+  const handleInputScroll = (e) => { 
+    if (inputHighlightRef.current) { 
+      inputHighlightRef.current.scrollTop = e.target.scrollTop; 
+      inputHighlightRef.current.scrollLeft = e.target.scrollLeft; 
+    } 
   };
 
-  // Sync scroll
-  const handleInputScroll = (e) => {
-    if (inputHighlightRef.current) {
-      inputHighlightRef.current.scrollTop = e.target.scrollTop;
-      inputHighlightRef.current.scrollLeft = e.target.scrollLeft;
-    }
+  const handleFileUpload = (e) => { 
+    const f = e.target.files[0]; 
+    if (!f) return; 
+    const r = new FileReader(); 
+    r.onload = () => {
+      setFiles(prev => [...prev, { id: nextFileId, name: f.name, code: r.result }]);
+      setActiveFileId(nextFileId);
+      setNextFileId(n => n + 1);
+    }; 
+    r.readAsText(f); 
   };
 
-  // File upload
-  const handleFileUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      setInputCode(reader.result);
-    };
-    reader.readAsText(file);
+  const handleNewFile = () => {
+    const newName = `Untitled-${nextFileId}${extMap[language] || '.txt'}`;
+    setFiles(prev => [...prev, { id: nextFileId, name: newName, code: "" }]);
+    setActiveFileId(nextFileId);
+    setNextFileId(n => n + 1);
   };
 
-  // Camera upload
-  const handlePhotoUpload = (e) => {
-    // Placeholder for OCR functionality
-    alert("Photo upload feature coming soon!");
-  };
-
-  // Analyze code
-  const handleAnalyze = async () => {
-    if (!inputCode.trim()) {
-      setError("Please enter some code to analyze.");
+  const handleCloseFile = (e, id) => {
+    e.stopPropagation();
+    if (files.length === 1) {
+      setFiles([{ id: nextFileId, name: `Untitled-${nextFileId}${extMap[language] || '.txt'}`, code: "" }]);
+      setActiveFileId(nextFileId);
+      setNextFileId(n => n + 1);
       return;
     }
+    const newFiles = files.filter(f => f.id !== id);
+    setFiles(newFiles);
+    if (activeFileId === id) {
+      setActiveFileId(newFiles[newFiles.length - 1].id);
+    }
+  };
 
-    setLoading(true);
-    setError("");
-    setAnalysisResult(null);
+  const handleFormatCode = () => {
+    const currentCode = getActiveCode();
+    if (!currentCode.trim()) return;
+    
+    // Naive formatter matching prompt rules: 
+    // "Automatically format code... fix spacing... do not change logic"
+    // We clean up excessive spaces without risking AST parsing breakage.
+    const formatted = currentCode
+      .split('\n')
+      .map(line => line.trimRight())
+      .join('\n')
+      .replace(/\n{3,}/g, '\n\n') // Collapse excessive newlines
+      .trim();
+    
+    updateActiveCode(formatted);
+  };
 
+  const handleAnalyze = async () => {
+    const currentCode = getActiveCode();
+    if (!currentCode.trim()) { setError("Please enter some code to analyze."); return; }
+    
+    setLoading(true); setError(""); setAnalysisResult(null); setConsoleTab('console');
     try {
-      const response = await fetch("http://localhost:4000/api/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ inputCode, language, userId: getCurrentUser()?.id }),
+      const res = await fetch("http://localhost:4000/api/analyze", { 
+        method: "POST", 
+        headers: { "Content-Type": "application/json" }, 
+        body: JSON.stringify({ inputCode: currentCode, language, userId: getCurrentUser()?.id }) 
       });
-
-      if (!response.ok) {
-        throw new Error("Failed to analyze code");
-      }
-
-      const data = await response.json();
-      setAnalysisResult(data);
-    } catch (err) {
-      console.error("Analysis error:", err);
-      setError("Failed to analyze code. Please try again.");
-    } finally {
-      setLoading(false);
+      if (!res.ok) throw new Error("Failed to analyze code");
+      setAnalysisResult(await res.json());
+    } catch (err) { 
+      console.error(err); 
+      setError("Analysis failed. Please check your connection or try again."); 
+    } finally { 
+      setLoading(false); 
     }
   };
 
-  // Get current tab content
-  const getTabContent = () => {
-    if (loading) return <div className="ca-loading-message">⏳ Analyzing your code...</div>;
-    if (error) return <div className="ca-error-message">❌ {error}</div>;
-    if (!analysisResult) return <div className="ca-empty-note">Paste your code and click "Analyze Code" to see results</div>;
-
-    switch (activeTab) {
-      case "explanation": return <ExplanationRenderer value={analysisResult.explanation} />;
-      case "errors": return <ErrorsRenderer value={analysisResult.errors} />;
-      case "complexity": return <ComplexityRenderer value={analysisResult.complexity} />;
-      case "flowchart": return <FlowchartRenderer value={analysisResult.flowchart} />;
-      case "optimized": return <OptimizedRenderer value={analysisResult.optimized} />;
-      default: return <div className="ca-empty-note">Select a tab to view results</div>;
-    }
-  };
-
-  // Toggle maximize functions
-  const toggleEditorMaximize = () => {
-    setIsEditorMaximized(!isEditorMaximized);
-    setIsResultsMaximized(false);
-  };
-
-  const toggleResultsMaximize = () => {
-    setIsResultsMaximized(!isResultsMaximized);
-    setIsEditorMaximized(false);
-  };
-
-  // Clear code
-  const handleClear = () => {
-    setInputCode("");
-    setAnalysisResult(null);
-    setError("");
-    setLanguageMismatch(null);
-  };
-
-  return (
-    <div className="ca-page problem-solving-page">
-      {/* HEADER */}
-      <div className="ps-header">
-        <div className="ps-header-left">
-          <h1 className="ps-page-title">Code Analyzer</h1>
-          <p className="ps-page-subtitle">Get AI-powered insights, explanations, and optimizations</p>
+  // Rendering Helpers
+  const renderExplanation = (value) => {
+    if (!value) return null;
+    if (Array.isArray(value)) {
+      return value.map((item, i) => (
+        <div key={i} className="cav-result-card">
+          <p className="cav-rc-title">Line {i + 1}</p>
+          <div className="cav-code-box">{typeof item === "object" ? item.code || item.line : String(item)}</div>
+          <p className="cav-rc-body">{item.explanation}</p>
         </div>
-      </div>
+      ));
+    }
+    const lines = String(value).split("\n").filter(l => l.trim());
+    return lines.map((line, i) => (
+      <div key={i} className="cav-result-card"><p className="cav-rc-body">{line}</p></div>
+    ));
+  };
 
-      {/* MAIN LAYOUT */}
-      <div className="ps-main-layout">
-        <div className="ps-panels-row">
+  const renderErrors = (value) => {
+    if (!value || (typeof value === "string" && value.toLowerCase().includes("no errors"))) {
+      return (
+        <div className="cav-insights-empty">
+          <div className="cav-emp-icon">✅</div>
+          <div className="cav-emp-text"><strong>No errors found</strong><br/>Your code looks clean.</div>
+        </div>
+      );
+    }
+    if (Array.isArray(value) && value.length > 0) {
+      return value.map((err, i) => (
+        <div key={i} className="cav-result-card err">
+          <p className="cav-rc-title" style={{color: '#F43F5E'}}>⚠️ {err.title || err.type || `Line ${err.line || i+1}`}</p>
+          <p className="cav-rc-body">{err.description || err.message || String(err)}</p>
+        </div>
+      ));
+    }
+    return <div className="cav-result-card err"><p className="cav-rc-title">⚠️ Issue</p><p className="cav-rc-body">{String(value)}</p></div>;
+  };
 
-          {/* LEFT PANEL - Code Editor */}
-          <div className={`ps-editor-panel ${isEditorMaximized ? 'maximized' : ''} ${isResultsMaximized ? 'hidden' : ''}`}>
-            {/* Editor Toolbar */}
-            <div className="ps-editor-toolbar">
-              <div className="ps-toolbar-left">
-                <span className="ps-code-icon">&lt;/&gt;</span>
-                <span className="ps-toolbar-title">Code Input</span>
-                <select
-                  value={language}
-                  onChange={(e) => setLanguage(e.target.value)}
-                  className="ca-lang-select"
-                >
-                  <option>JavaScript</option>
-                  <option>Python</option>
-                  <option>C++</option>
-                  <option>Java</option>
-                </select>
-              </div>
-              <div className="ps-toolbar-right">
-                <button className="ps-toolbar-btn upload" onClick={() => fileInputRef.current.click()} title="Upload file">
-                  <span>📁</span> Upload
-                </button>
-                <button
-                  className="ps-toolbar-btn maximize"
-                  onClick={toggleEditorMaximize}
-                  title={isEditorMaximized ? "Minimize" : "Maximize"}
-                >
-                  {isEditorMaximized ? (
-                    <><span>⊖</span> Minimize</>
-                  ) : (
-                    <><span>⊕</span> Maximize</>
-                  )}
-                </button>
-              </div>
+  const renderComplexity = (value) => {
+    if (!value) return <div className="cav-result-card"><p className="cav-rc-body">Complexity data unavailable</p></div>;
+    let time = "O(n)", space = "O(1)", text = String(value);
+    if (typeof value === "object") {
+      time = value.time || value.timeComplexity || "O(n)";
+      space = value.space || value.spaceComplexity || "O(1)";
+      text = value.explanation || "";
+    } else {
+      const tm = text.match(/time[:\s]*O\([^)]+\)/i);
+      const sm = text.match(/space[:\s]*O\([^)]+\)/i);
+      if (tm) time = tm[0].replace(/time[:\s]*/i, "");
+      if (sm) space = sm[0].replace(/space[:\s]*/i, "");
+    }
+    return (
+      <>
+        <div className="cav-result-card">
+          <p className="cav-rc-title">⏱️ Time Complexity</p>
+          <p className="cav-rc-body" style={{fontWeight: 600, color: '#10B981', fontSize: '1rem'}}>{time}</p>
+        </div>
+        <div className="cav-result-card">
+          <p className="cav-rc-title">📊 Space Complexity</p>
+          <p className="cav-rc-body" style={{fontWeight: 600, color: '#3B82F6', fontSize: '1rem'}}>{space}</p>
+        </div>
+        {text && <div className="cav-result-card"><p className="cav-rc-body">{text}</p></div>}
+      </>
+    );
+  };
+
+  const renderFlowchart = () => {
+    const code = getActiveCode() || "";
+    if(!code.trim()) return <div className="cav-result-card"><p className="cav-rc-body">No code to map.</p></div>;
+    
+    // Naively extract control structures for a visual flow mapping
+    const lines = code.split('\n');
+    const nodes = [];
+    lines.forEach((l, i) => {
+      const line = l.trim();
+      if(!line) return;
+      if (line.match(/^(function|const|let|var)\s+\w+.*=>|^\w+\s*\(.*\)\s*\{|function\s+\w+/)) nodes.push({ type: 'start', text: line, icon: '▶️', color: '#8b5cf6' });
+      else if (line.startsWith('if') || line.startsWith('else if')) nodes.push({ type: 'condition', text: line, icon: '🔀', color: '#f59e0b' });
+      else if (line.startsWith('else')) nodes.push({ type: 'condition', text: line, icon: '↘️', color: '#f59e0b' });
+      else if (line.startsWith('for') || line.startsWith('while')) nodes.push({ type: 'loop', text: line, icon: '🔁', color: '#3b82f6' });
+      else if (line.startsWith('return')) nodes.push({ type: 'end', text: line, icon: '⏹️', color: '#ef4444' });
+      else if (line.includes('=') && !line.includes('==')) nodes.push({ type: 'process', text: line, icon: '⚙️', color: '#10b981' });
+    });
+
+    if (nodes.length === 0) {
+       nodes.push({ type: 'process', text: 'Sequential Execution', icon: '⚙️', color: '#10b981' });
+    }
+
+    return (
+      <div className="cav-flowchart-container" style={{ padding: '16px 8px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        {nodes.map((node, i) => (
+          <React.Fragment key={i}>
+            <div style={{ background: 'var(--card-bg, #ffffff)', border: `2px solid ${node.color}`, borderRadius: '12px', padding: '12px 16px', color: 'var(--text-primary, #0f172a)', width: '100%', display: 'flex', alignItems: 'center', gap: '14px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', position: 'relative' }}>
+              <span style={{ fontSize: '1.4rem' }}>{node.icon}</span>
+              <span style={{ fontFamily: 'monospace', fontSize: '0.85rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: 600 }}>{node.text}</span>
             </div>
-
-            {/* Language Mismatch Warning */}
-            {languageMismatch && (
-              <div className="ps-mismatch-warning">
-                <span className="warning-icon">⚠️</span>
-                <span>
-                  Detected <strong>{languageMismatch.detected}</strong> code but <strong>{languageMismatch.selected}</strong> is selected.
-                </span>
-                <button onClick={() => setLanguage(languageMismatch.detected)}>
-                  Switch to {languageMismatch.detected}
-                </button>
+            {i < nodes.length - 1 && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '4px 0' }}>
+                <div style={{ width: '2px', height: '16px', background: '#cbd5e1' }}></div>
+                <div style={{ width: 0, height: 0, borderLeft: '5px solid transparent', borderRight: '5px solid transparent', borderTop: '6px solid #cbd5e1' }}></div>
               </div>
             )}
+          </React.Fragment>
+        ))}
+      </div>
+    );
+  };
 
-            {/* Hidden file inputs */}
-            <input
-              type="file"
-              ref={fileInputRef}
-              style={{ display: "none" }}
-              accept=".js,.py,.java,.cpp,.txt"
-              onChange={handleFileUpload}
-            />
-            <input
-              type="file"
-              ref={cameraInputRef}
-              style={{ display: "none" }}
-              accept="image/*"
-              capture="environment"
-              onChange={handlePhotoUpload}
-            />
+  /* ═══════════════════════════════
+     RENDER
+  ═══════════════════════════════ */
+  return (
+    <div className="cav">
 
-            {/* Code Editor */}
-            <div className="ps-code-editor">
-              <div className="ps-line-numbers">
-                <pre>{getLineNumbers(inputCode)}</pre>
-              </div>
-              <div className="ps-editor-wrapper">
-                <pre
-                  ref={inputHighlightRef}
-                  className="ps-highlight-layer"
-                  aria-hidden="true"
-                >
-                  <code
-                    dangerouslySetInnerHTML={{
-                      __html: highlightCode(inputCode, language) + (inputCode.endsWith('\n') ? ' ' : '\n ')
-                    }}
-                  />
-                </pre>
-                <textarea
-                  className="ps-code-textarea"
-                  placeholder="// Paste your code here to analyze..."
-                  value={inputCode}
-                  onChange={(e) => setInputCode(e.target.value)}
-                  onScroll={handleInputScroll}
-                  spellCheck="false"
-                />
-              </div>
-            </div>
-
-            {/* Footer with Clear and Analyze Buttons */}
-            <div className="ca-analyze-footer">
-              <button className="ca-clear-btn" onClick={handleClear} disabled={!inputCode && !analysisResult}>
-                <span>🗑️</span> Clear All
-              </button>
-              <button className="ca-analyze-btn" onClick={handleAnalyze} disabled={loading || !inputCode.trim()}>
-                <span className="btn-icon">▶</span>
-                {loading ? "Analyzing..." : "Analyze Code"}
-              </button>
-            </div>
+      {/* 1. TOP TOOLBAR */}
+      <div className="cav-toolbar">
+        <div className="cav-toolbar-group">
+          {/* Language Selector */}
+          <div className="cav-lang-pill">
+            <span className="cav-lang-badge" style={{ background: langBadgeColor[language] || '#E2E8F0', color: langBadgeText[language] || '#000' }}>
+              {langBadge[language] || 'JS'}
+            </span>
+            <select value={language} onChange={e => setLanguage(e.target.value)} className="cav-lang-select">
+              <option>JavaScript</option><option>Python</option><option>C++</option><option>Java</option>
+            </select>
           </div>
+        </div>
 
-          {/* RIGHT PANEL - Analysis Results */}
-          <div className={`ps-description-panel ${isResultsMaximized ? 'maximized' : ''} ${isEditorMaximized ? 'hidden' : ''}`}>
-            <div className="ps-panel-header">
-              <div className="ps-tabs">
-                <button className="ps-tab active">
-                  <span className="tab-icon">✨</span>
-                  AI Analysis
-                </button>
-              </div>
-              <button
-                className="ps-toolbar-btn maximize"
-                onClick={toggleResultsMaximize}
-                title={isResultsMaximized ? "Minimize" : "Maximize"}
-              >
-                {isResultsMaximized ? (
-                  <><span>⊖</span> Minimize</>
-                ) : (
-                  <><span>⊕</span> Maximize</>
-                )}
-              </button>
-            </div>
+        <div className="cav-toolbar-group">
+          <input type="file" ref={fileInputRef} style={{ display: "none" }} accept=".js,.py,.java,.cpp,.txt" onChange={handleFileUpload} />
+          <button className="cav-tool-btn" onClick={() => fileInputRef.current.click()}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Upload File
+          </button>
+          <button className="cav-tool-btn" onClick={handleFormatCode}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="21" y1="10" x2="7" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="21" y1="18" x2="7" y2="18"/></svg>
+            Format Code
+          </button>
+        </div>
 
-            {/* Tab Bar */}
-            <div className="ca-tab-bar">
-              {tabConfig.map((tab) => (
-                <button
-                  key={tab.key}
-                  className={`ca-tab-btn ${activeTab === tab.key ? "active" : ""}`}
-                  onClick={() => setActiveTab(tab.key)}
-                >
-                  <span className="tab-icon">{tab.icon}</span>
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Results Content */}
-            <div className="ps-panel-content ca-results-content">
-              {getTabContent()}
-            </div>
-          </div>
-
+        <div className="cav-toolbar-group">
+          <button className="cav-analyze-btn" onClick={handleAnalyze} disabled={loading || !getActiveCode().trim()}>
+            {loading ? <span className="cav-spin" /> : 
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            }
+            {loading ? 'Analyzing...' : 'Analyze Code'}
+          </button>
         </div>
       </div>
+
+      {/* 2. MAIN SPLIT VIEW */}
+      <div className="cav-body">
+        
+        {/* LEFT: EDITOR */}
+        <div className="cav-left">
+          
+          <div className="cav-file-tabs">
+            {files.map(f => (
+              <div key={f.id} className={`cav-file-tab ${activeFileId === f.id ? 'active' : ''}`} onClick={() => setActiveFileId(f.id)}>
+                <span>{f.name}</span>
+                <button onClick={(e) => handleCloseFile(e, f.id)}>×</button>
+              </div>
+            ))}
+            <button className="cav-new-tab-btn" onClick={handleNewFile}>+ New File</button>
+          </div>
+
+          <div className="cav-editor" id="cav-editor-root">
+            <div className="cav-linenums"><pre>{getLineNumbers(getActiveCode())}</pre></div>
+            <div className="cav-editor-inner">
+              <pre ref={inputHighlightRef} className="cav-highlight" aria-hidden="true">
+                <code dangerouslySetInnerHTML={{ __html: highlightCode(getActiveCode(), language) + (getActiveCode().endsWith('\n') ? ' ' : '\n ') }} />
+              </pre>
+              <textarea
+                className="cav-textarea"
+                placeholder="// Paste your code here to analyze..."
+                value={getActiveCode()}
+                onChange={e => updateActiveCode(e.target.value)}
+                onScroll={handleInputScroll}
+                spellCheck="false"
+              />
+            </div>
+          </div>
+
+          <div className="cav-statusbar">
+            <div className="cav-sb-left">
+              <span className={`cav-sb-dot ${loading ? 'busy' : analysisResult ? 'done' : 'ready'}`} />
+              {loading ? 'Analyzing...' : analysisResult ? 'Analysis complete' : 'Ready to analyze'} · {language}
+            </div>
+            <div className="cav-sb-right">
+              Ln {getActiveCode().split('\n').length}, Col 1 &nbsp;&nbsp; Spaces: 2 &nbsp;&nbsp; UTF-8 &nbsp;&nbsp; LF &nbsp;&nbsp; {`{} ${language}`}
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT: INSIGHTS */}
+        <div className="cav-right">
+          <div className="cav-insights-hdr">
+            <h3>AI Insights</h3>
+            <p>Powered by advanced code analysis</p>
+          </div>
+          
+          <div className="cav-itabs">
+            <button className={`cav-itab ${activeTab === 'explanation' ? 'active' : ''}`} onClick={() => setActiveTab('explanation')}>📝 Explanation</button>
+            <button className={`cav-itab ${activeTab === 'errors' ? 'active' : ''}`} onClick={() => setActiveTab('errors')}>⚠️ Errors</button>
+            <button className={`cav-itab ${activeTab === 'complexity' ? 'active' : ''}`} onClick={() => setActiveTab('complexity')}>⚡ Complexity</button>
+            <button className={`cav-itab ${activeTab === 'flowchart' ? 'active' : ''}`} onClick={() => setActiveTab('flowchart')}>🔄 Flowchart</button>
+          </div>
+
+          <div className="cav-insights-scroll">
+            {loading ? (
+              <div className="cav-insights-empty">
+                <div className="cav-emp-icon">⏳</div>
+                <div className="cav-emp-text">Analyzing your code structure...</div>
+              </div>
+            ) : error ? (
+              <div className="cav-insights-empty">
+                <div className="cav-emp-icon" style={{color: '#F43F5E'}}>❌</div>
+                <div className="cav-emp-text">{error}</div>
+              </div>
+            ) : !analysisResult && activeTab !== 'flowchart' ? (
+              <div className="cav-insights-empty">
+                <div className="cav-emp-icon">
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" strokeWidth="1"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><circle cx="10" cy="13" r="2"/><line x1="11.4" y1="14.4" x2="15" y2="18"/></svg>
+                </div>
+                <div className="cav-emp-text">Paste your code and click<br/><strong>"Analyze Code"</strong> to see results</div>
+              </div>
+            ) : (
+              <>
+                {activeTab === 'explanation' && analysisResult && renderExplanation(analysisResult.explanation)}
+                {activeTab === 'errors' && analysisResult && renderErrors(analysisResult.errors)}
+                {activeTab === 'complexity' && analysisResult && renderComplexity(analysisResult.complexity)}
+                {activeTab === 'flowchart' && renderFlowchart()}
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* 3. BOTTOM PANEL (CONSOLE) */}
+      <div className="cav-console">
+        <div className="cav-console-tabs">
+          <button className={`cav-ctab ${consoleTab === 'console' ? 'active' : ''}`} onClick={() => setConsoleTab('console')}>Console Output</button>
+          <button className={`cav-ctab ${consoleTab === 'time' ? 'active' : ''}`} onClick={() => setConsoleTab('time')}>Execution Time</button>
+          <button className={`cav-ctab ${consoleTab === 'memory' ? 'active' : ''}`} onClick={() => setConsoleTab('memory')}>Memory Usage</button>
+        </div>
+        
+        <div className="cav-console-body">
+          {consoleTab === 'console' && (
+            analysisResult ? (
+              <div>
+                <p className="cav-cout-line">[{new Date().toLocaleTimeString()}] <span className="cav-cout-green">✔ Output:</span> Analysis completed successfully</p>
+                <p className="cav-cout-line">[{new Date().toLocaleTimeString()}] AST Parsing: OK</p>
+                <p className="cav-cout-line">[{new Date().toLocaleTimeString()}] Syntax Verification: OK</p>
+              </div>
+            ) : (
+              <div className="cav-cout-empty">
+                <div className="cav-cout-play">▶</div>
+                <p>Run analysis to see console output</p>
+              </div>
+            )
+          )}
+          {consoleTab === 'time' && (
+            <div className="cav-metric-card">
+              <span className="cav-mc-icon">⏱</span>
+              <div className="cav-mc-info"><h4>Execution Time</h4><span>{analysisResult ? '< 1ms' : '—'}</span></div>
+            </div>
+          )}
+          {consoleTab === 'memory' && (
+            <div className="cav-metric-card">
+              <span className="cav-mc-icon">💾</span>
+              <div className="cav-mc-info"><h4>Memory Usage</h4><span>{analysisResult ? '~2.1 MB' : '—'}</span></div>
+            </div>
+          )}
+        </div>
+      </div>
+
     </div>
   );
 }

@@ -22,6 +22,7 @@ const LANGUAGE_IDS = {
 const JUDGE0_API_URL = process.env.JUDGE0_API_URL || "https://judge0-ce.p.rapidapi.com";
 const JUDGE0_API_KEY = process.env.JUDGE0_API_KEY || "";
 const JUDGE0_API_HOST = process.env.JUDGE0_API_HOST || "judge0-ce.p.rapidapi.com";
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 // Execute single code
 router.post("/run", async (req, res) => {
@@ -37,10 +38,14 @@ router.post("/run", async (req, res) => {
     }
 
     try {
-        // If no API key, use simulation mode
+        // If no API key, enforce real execution explicitly
         if (!JUDGE0_API_KEY) {
-            console.log("⚠️ No Judge0 API key - using simulation mode");
-            return simulateExecution(code, language, input, res);
+            console.error("⚠️ No Judge0 API key - Local execution not currently implemented");
+            return res.json({
+                success: false,
+                error: "Execution Backend Missing: Please configure JUDGE0_API_KEY in .env, or integrate a local Node child_process sandbox for real execution. Simulated execution is disabled.",
+                status: "System Error"
+            });
         }
 
         // Submit code to Judge0
@@ -78,9 +83,11 @@ router.post("/run", async (req, res) => {
 
     } catch (error) {
         console.error("Judge0 API error:", error.response?.data || error.message);
-
-        // Fallback to simulation if API fails
-        return simulateExecution(code, language, input, res);
+        return res.json({
+            success: false,
+            error: "Execution failed. Judge0 API encountered an error.",
+            status: "Error"
+        });
     }
 });
 
@@ -185,108 +192,108 @@ router.post("/test", async (req, res) => {
 });
 
 // Simulation mode when no API key
-function simulateExecution(code, language, input, res) {
-    // This simulates code execution for demo purposes
-    // In production, you should use the Judge0 API
+async function simulateExecution(code, language, input, res) {
+    if (!GEMINI_API_KEY) {
+        return res.json({
+            success: true,
+            output: "Code executed (dumb simulation mode - add GEMINI_API_KEY or JUDGE0_API_KEY)",
+            error: null,
+            status: "Simulated",
+            executionTime: 15,
+            memory: 1024,
+            simulated: true,
+        });
+    }
 
-    setTimeout(() => {
-        // Try to detect common patterns and simulate output
-        let output = "";
-        let error = null;
-
-        try {
-            // Simple pattern detection for common code structures
-            if (language === "python") {
-                // Check for print statements
-                const printMatch = code.match(/print\s*\(\s*["'](.+?)["']\s*\)/);
-                if (printMatch) {
-                    output = printMatch[1];
-                } else if (code.includes("print(")) {
-                    output = "Program executed successfully";
-                }
-            } else if (language === "javascript") {
-                const consoleMatch = code.match(/console\.log\s*\(\s*["'](.+?)["']\s*\)/);
-                if (consoleMatch) {
-                    output = consoleMatch[1];
-                } else if (code.includes("console.log")) {
-                    output = "Program executed successfully";
-                }
-            }
-
-            // If no output detected, provide generic message
-            if (!output) {
-                output = "Code executed (simulation mode - add JUDGE0_API_KEY for real execution)";
-            }
-
-            res.json({
-                success: true,
-                output: output,
-                error: null,
-                status: "Simulated",
-                executionTime: Math.random() * 50 + 10, // Random 10-60ms
-                memory: Math.floor(Math.random() * 5000) + 1000, // Random 1-6MB
-                simulated: true,
-            });
-
-        } catch (e) {
-            res.json({
-                success: false,
-                output: "",
-                error: "Simulation failed: " + e.message,
-                status: "Error",
-                executionTime: null,
-                memory: null,
-                simulated: true,
-            });
-        }
-    }, 500); // Simulate delay
+    const prompt = `You are a code execution engine simulating stdout. Run this ${language} code with this input:\nInput: ${input || "(no input)"}\n\nCode:\n${code}\n\nReturn JSON ONLY:\n{ "output": "stdout string", "error": "error string if it fails, else null", "status": "Finished or Error" }`;
+    
+    try {
+        const apiRes = await axios.post(
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + GEMINI_API_KEY,
+            { contents: [{ parts: [{ text: prompt }] }] }
+        );
+        let raw = apiRes.data.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+        const firstBrace = raw.indexOf("{");
+        const lastBrace = raw.lastIndexOf("}");
+        if (firstBrace !== -1 && lastBrace !== -1) raw = raw.substring(firstBrace, lastBrace + 1);
+        const json = JSON.parse(raw);
+        
+        res.json({
+            success: true,
+            output: json.output || "",
+            error: json.error || null,
+            status: json.status || "Simulated",
+            executionTime: Math.random() * 50 + 10,
+            memory: Math.floor(Math.random() * 5000) + 1000,
+            simulated: true,
+        });
+    } catch(err) {
+        res.json({ success: false, output: "", error: "Simulation failed", status: "Error", executionTime: null, memory: null, simulated: true });
+    }
 }
 
-// Simulate test cases
-function simulateTestCases(code, language, testCases, res) {
-    setTimeout(() => {
-        const results = testCases.map((testCase, i) => {
-            // For simulation, we'll randomly pass/fail or use simple logic
-            // In real usage, Judge0 would actually execute the code
+// Simulate test cases using Gemini
+async function simulateTestCases(code, language, testCases, res) {
+    if (!GEMINI_API_KEY) {
+        const results = testCases.map((tc, i) => ({
+            testCaseNumber: i + 1,
+            input: tc.input,
+            expectedOutput: tc.expectedOutput?.trim() || "",
+            actualOutput: "Requires API Key",
+            passed: false,
+            error: "Please add GEMINI_API_KEY or JUDGE0_API_KEY to .env",
+            status: "Simulated Error",
+            executionTime: 0,
+            memory: 0,
+        }));
+        return res.json({ success: true, allPassed: false, passedCount: 0, totalCount: testCases.length, totalTime: 0, maxMemory: 0, results, simulated: true });
+    }
 
-            const expectedOutput = testCase.expectedOutput?.trim() || "";
+    const testCasesString = testCases.map((tc, i) => `Case ${i+1}:\nInput: ${tc.input}\nExpected: ${tc.expectedOutput}`).join("\n\n");
+    const prompt = `You are a strict test case runner. Run this ${language} code mentally against these test cases.\nCode:\n${code}\n\nCases:\n${testCasesString}\n\nIMPORTANT: If the code is missing logic, incomplete, or functionally wrong, it MUST NOT match the expected output. Return JSON ONLY:\n{ "results": [ { "testCaseNumber": 1, "actualOutput": "string output", "passed": true/false, "error": "error if any" } ] }`;
 
-            // Simple simulation: pass if code looks reasonable
-            const hasReturnOrPrint = code.includes("return") ||
-                code.includes("print") ||
-                code.includes("console.log") ||
-                code.trim().length > 5;
-
-            // Make it pass predictably for demo testing instead of randomly failing 30% of the time
-            const passed = hasReturnOrPrint;
-
+    try {
+        const apiRes = await axios.post(
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + GEMINI_API_KEY,
+            { contents: [{ parts: [{ text: prompt }] }] }
+        );
+        let raw = apiRes.data.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+        const firstBrace = raw.indexOf("{");
+        const lastBrace = raw.lastIndexOf("}");
+        if (firstBrace !== -1 && lastBrace !== -1) raw = raw.substring(firstBrace, lastBrace + 1);
+        const json = JSON.parse(raw);
+        
+        const results = testCases.map((tc, i) => {
+            const aiResult = json.results?.find(r => r.testCaseNumber === i + 1) || {};
+            const passed = aiResult.passed || false;
             return {
                 testCaseNumber: i + 1,
-                input: testCase.input,
-                expectedOutput: expectedOutput,
-                actualOutput: passed ? expectedOutput : "Different output (simulated)",
+                input: tc.input,
+                expectedOutput: tc.expectedOutput,
+                actualOutput: aiResult.actualOutput || (passed ? tc.expectedOutput : "Wrong Output"),
                 passed: passed,
-                error: null,
-                status: "Simulated",
+                error: aiResult.error || null,
+                status: passed ? "Accepted" : "Wrong Answer",
                 executionTime: Math.random() * 30 + 5,
                 memory: Math.floor(Math.random() * 3000) + 500,
             };
         });
 
         const passedCount = results.filter(r => r.passed).length;
-
         res.json({
             success: true,
             allPassed: passedCount === testCases.length,
             passedCount,
             totalCount: testCases.length,
             totalTime: results.reduce((sum, r) => sum + r.executionTime, 0),
-            maxMemory: Math.max(...results.map(r => r.memory)),
+            maxMemory: Math.max(...results.map(r => r.memory || 0)),
             results,
             simulated: true,
-            message: "⚠️ Running in simulation mode. Add JUDGE0_API_KEY to .env for real code execution.",
+            message: "⚠️ AI simulation mode."
         });
-    }, 800);
+    } catch(err) {
+        res.json({ success: false, error: "AI Simulation failed", results: [], allPassed: false, passedCount: 0, totalCount: testCases.length });
+    }
 }
 
 export default router;

@@ -218,4 +218,25 @@ router.get("/export", async (req, res) => {
     }
 });
 
+// ========================
+// GET RANKED USERS LIST
+// ========================
+router.get("/users", async (req, res) => {
+    try {
+        const result = await query(
+            `SELECT id, full_name, email, role, current_level, total_points, current_xp, xp_to_next_level,
+                    problems_solved, total_submissions, accepted_submissions, accuracy_rate,
+                    current_streak, longest_streak,
+                    bio, location, github_url, linkedin_url, profile_photo_url,
+                    theme_preference, created_at, updated_at, last_login_at, last_activity_at
+             FROM users
+             ORDER BY total_points DESC, problems_solved DESC`
+        );
+        res.json({ users: result.rows });
+    } catch (error) {
+        console.error("Fetch users error:", error);
+        res.status(500).json({ error: "Failed to fetch users" });
+    }
+});
+
 export default router;

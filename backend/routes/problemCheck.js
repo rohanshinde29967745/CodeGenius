@@ -39,8 +39,7 @@ router.post("/", async (req, res) => {
 
   // AI Judge Prompt
   const prompt = `
-You are a strict coding judge.
-Check the user's solution for correctness.
+You are a STRICT coding judge. Evaluate the user's solution honestly and harshly.
 
 ### Problem Title:
 ${problem || "Unknown Problem"}
@@ -65,15 +64,24 @@ ${language || "Unknown"}
 ### User Solution:
 ${userSolution}
 
-### IMPORTANT — RETURN ONLY JSON BELOW:
+### SCORING RULES (follow strictly):
+- If the solution is INCORRECT, incomplete, or a stub (e.g. just "pass", "return null", default template), "correct" MUST be false and score MUST be < 40!
+- Score 0-15:  Solution is empty, a stub, or completely wrong logic.
+- Score 16-40: Solution has some logic but major bugs, wrong approach, or fails most test cases (correct: false).
+- Score 41-69: Solution is partially correct — right approach but has edge case failures or minor logical bugs (correct: false).
+- Score 70-89: Solution is mostly correct with very minor issues or style concerns (correct: true).
+- Score 90-100: Solution is absolutely flawless, optimally efficient, handles all edge cases perfectly (correct: true). ONLY give >90 if it is perfect.
+
+### IMPORTANT — RETURN ONLY VALID JSON BELOW (no markdown, no extra text):
 {
-  "correct": true/false,
-  "feedback": "Short explanation of correctness or mistakes.",
-  "score": <number 0-100>,
-  "testsPassed": <number>,
-  "testsTotal": <number>
+  "correct": true or false,
+  "score": <integer 0-100 following the rules above>,
+  "feedback": "One concise sentence summarizing the verdict.",
+  "errorExplanation": "CRITICAL: If correct is false, explain EXACTLY why the code fails (e.g., 'You forgot to check if the array is empty', 'Wrong algorithm used'). If correct is true, leave empty.",
+  "suggestions": ["Improvement suggestion 1", "Improvement suggestion 2"],
+  "testsPassed": <estimated number of example tests that would pass>,
+  "testsTotal": ${safeExamples.length || 0}
 }
-NO extra text outside JSON.
   `;
 
   try {
@@ -138,7 +146,9 @@ NO extra text outside JSON.
 
         // 2. Record Submission & Attempt
         const isCorrect = aiResult.correct || false;
-        const pointsEarned = isCorrect ? 20 : Math.floor((aiResult.score || 0) / 10);
+        const score = aiResult.score || 0;
+        // Points scale with score: max 20 for perfect, almost nothing for stubs
+        const pointsEarned = Math.round((score / 100) * 20);
 
         // Record in submissions (legacy)
         await query(
@@ -323,34 +333,44 @@ NO extra text outside JSON.
       }
     }
 
-    const finalMessage = aiResult.correct
-      ? `✅ Correct Solution!\n\n${aiResult.feedback}\n\nScore: ${aiResult.score}`
-      : `❌ Incorrect Solution.\n\n${aiResult.feedback}`;
+    const finalScore = aiResult.score || 0;
+    const finalCorrect = aiResult.correct || false;
+    const finalPoints = Math.round((finalScore / 100) * 20);
+
+    const finalMessage = finalCorrect
+      ? `✅ Correct Solution! ${aiResult.feedback}`
+      : `❌ Incorrect Solution. ${aiResult.feedback}`;
 
     // Return comprehensive response with stats update info
     res.json({
       result: finalMessage,
       saved: statsUpdated,
-      correct: aiResult.correct || false,
-      score: aiResult.score || 0,
-      pointsEarned: aiResult.correct ? 20 : Math.floor((aiResult.score || 0) / 10)
+      correct: finalCorrect,
+      score: finalScore,
+      pointsEarned: finalPoints,
+      feedback: {
+        score: finalScore,
+        feedback: aiResult.feedback || '',
+        errorExplanation: aiResult.errorExplanation || '',
+        suggestions: aiResult.suggestions || [],
+        optimizedSolution: ''
+      }
     });
 
   } catch (err) {
     console.error("❌ CHECK ERROR:", err.message);
     console.error("Full error:", err.response?.data || err);
 
-    // FALLBACK: Still save stats even if Gemini API fails
-    // Assume the solution is correct with a default score
+    // FALLBACK: Gemini API failed — do NOT assume correctness
     let statsUpdated = false;
 
     if (parsedUserId && problem) {
       try {
-        console.log("⚠️ API failed, using fallback logic to save stats...");
+        console.log("⚠️ API failed, recording attempt without correctness...");
 
-        // Default values when API fails - give user benefit of doubt
-        const isCorrect = true;
-        const pointsEarned = 15; // Slightly lower than perfect score
+        // API failed — we cannot judge correctness, give minimal points
+        const isCorrect = false;
+        const pointsEarned = 2; // Minimal points for attempting
 
         // 1. Find or create problem
         let problemId;
@@ -378,15 +398,7 @@ NO extra text outside JSON.
             total_points = COALESCE(total_points, 0) + $1,
             experience_points = COALESCE(experience_points, 0) + $1,
             current_xp = COALESCE(current_xp, 0) + $1,
-            problems_solved = COALESCE(problems_solved, 0) + 1,
-            medium_problems_solved = COALESCE(medium_problems_solved, 0) + 1,
             total_submissions = COALESCE(total_submissions, 0) + 1,
-            accepted_submissions = COALESCE(accepted_submissions, 0) + 1,
-            accuracy_rate = CASE 
-              WHEN (COALESCE(total_submissions, 0) + 1) > 0 
-              THEN ROUND(((COALESCE(accepted_submissions, 0) + 1)::DECIMAL / (COALESCE(total_submissions, 0) + 1)) * 100, 2)
-              ELSE 0 
-            END,
             updated_at = NOW()
           WHERE id = $2
           RETURNING id, total_points, problems_solved, current_xp, accuracy_rate`,
@@ -447,13 +459,18 @@ NO extra text outside JSON.
     }
 
     res.json({
-      result: statsUpdated
-        ? `✅ Solution submitted! (AI feedback unavailable)\n\nYour progress has been saved.`
-        : `❌ Failed to check solution: ${err.message}`,
+      result: `⚠️ Could not evaluate solution (AI service unavailable). Attempt recorded.`,
       saved: statsUpdated,
-      correct: statsUpdated,
-      score: statsUpdated ? 70 : 0,
-      pointsEarned: statsUpdated ? 15 : 0
+      correct: false,
+      score: 0,
+      pointsEarned: statsUpdated ? 2 : 0,
+      feedback: {
+        score: 0,
+        feedback: 'AI evaluation service is temporarily unavailable. Please try again.',
+        errorExplanation: '',
+        suggestions: ['Try submitting again in a moment.'],
+        optimizedSolution: ''
+      }
     });
   }
 });

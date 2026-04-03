@@ -32879,7 +32879,7 @@ body:not(.dark-theme) .ps-empty-results p {
 }
 
 /* Create Contest Page */
-.create-contest-header {
+.create-contest-header { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px; margin-bottom: 28px; } .header-left, .header-right { display: flex; align-items: center; } .header-right { justify-content: flex-end; } .visibility-header-note { font-size: 0.8rem; color: #64748b; margin-top: -6px; margin-bottom: 12px; font-weight: 500; } body.dark-theme .visibility-header-note { color: #94a3b8; } .obsolete-header {
   display: flex;
   align-items: center;
   gap: 24px;
@@ -36923,7 +36923,7 @@ body.dark-theme .pstat-numbers {
     animation: fadeInUp 0.4s ease;
 }
 
-.create-contest-header {
+.create-contest-header { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px; margin-bottom: 28px; } .header-left, .header-right { display: flex; align-items: center; } .header-right { justify-content: flex-end; } .visibility-header-note { font-size: 0.8rem; color: #64748b; margin-top: -6px; margin-bottom: 12px; font-weight: 500; } body.dark-theme .visibility-header-note { color: #94a3b8; } .obsolete-header {
     display: flex;
     align-items: center;
     gap: 16px;

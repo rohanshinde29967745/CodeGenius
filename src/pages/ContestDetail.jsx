@@ -1,9 +1,10 @@
 // ContestDetail.jsx - Contest Details and Leaderboard Page (with Admin Dashboard)
 import React, { useState, useEffect, useRef } from "react";
 import "../App.css";
+import "./ContestList.css";
 import { getCurrentUser } from "../services/api";
 
-function ContestDetail({ contestId, setPage }) {
+function ContestDetail({ contestId, setPage, isAdmin: isAdminProp }) {
     const [contest, setContest] = useState(null);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState("overview");
@@ -19,7 +20,8 @@ function ContestDetail({ contestId, setPage }) {
     const [participantsLoading, setParticipantsLoading] = useState(false);
     const statsInterval = useRef(null);
     const currentUser = getCurrentUser();
-    const isAdmin = currentUser?.role === "Admin";
+    // Use the prop if passed, otherwise fallback to check
+    const isActuallyAdmin = isAdminProp !== undefined ? isAdminProp : (currentUser?.role === "Admin");
 
     // Manual problem creation state
     const [showAddProblem, setShowAddProblem] = useState(false);
@@ -36,7 +38,7 @@ function ContestDetail({ contestId, setPage }) {
         if (contestId) {
             fetchContestDetails();
             fetchLeaderboard();
-            if (isAdmin) {
+            if (isActuallyAdmin) {
                 fetchAdminStats();
                 // Auto-refresh admin stats every 30s
                 statsInterval.current = setInterval(fetchAdminStats, 30000);
@@ -55,7 +57,10 @@ function ContestDetail({ contestId, setPage }) {
             const data = await res.json();
             console.log("FETCH CONTEST:", data);
             if (data.success) {
-                setContest(data.contest);
+                const contestData = data.contest;
+                // Ensure problems is always an array for counting
+                if (!contestData.problems) contestData.problems = [];
+                setContest(contestData);
             } else {
                 console.error("Contest fetch failed:", data.error);
             }
@@ -347,7 +352,7 @@ function ContestDetail({ contestId, setPage }) {
         { id: "problems", label: "Problems", icon: "📝" },
         { id: "leaderboard", label: "Leaderboard", icon: "🏆" },
         ...(contest.status === "FINISHED" ? [{ id: "statistics", label: "Statistics", icon: "📊" }] : []),
-        ...(isAdmin ? [
+        ...(isActuallyAdmin ? [
             { id: "participants", label: "Participants", icon: "👥", adminOnly: true },
             { id: "submissions_feed", label: "Submissions", icon: "📤", adminOnly: true },
             { id: "controls", label: "Controls", icon: "⚙️", adminOnly: true },
@@ -355,15 +360,15 @@ function ContestDetail({ contestId, setPage }) {
     ];
 
     return (
-        <div className="contest-detail-page">
+        <div className={`contest-detail-page ${isActuallyAdmin ? "is-admin-view" : ""}`}>
             {/* Header */}
             <div className="contest-detail-header">
-                <button className="back-btn" onClick={() => setPage("contests")}>
+                <button className="back-btn" onClick={() => setPage(isActuallyAdmin ? "adminContests" : "contests")}>
                     <span>←</span> Back to Contests
                 </button>
 
                 {/* Admin Live Stats Bar */}
-                {isAdmin && adminStats && (
+                {isActuallyAdmin && adminStats && (
                     <div className="admin-live-bar">
                         <div className="admin-live-label">
                             <span className="admin-live-dot"></span>
@@ -491,7 +496,7 @@ function ContestDetail({ contestId, setPage }) {
                                 <span>🚀</span> Enter Contest Arena
                             </button>
                         )}
-                        {contest.status === "LIVE" && !contest.isRegistered && !isAdmin && (
+                        {contest.status === "LIVE" && !contest.isRegistered && !isActuallyAdmin && (
                             <button className="register-btn primary" onClick={handleRegister}>
                                 <span>📝</span> Register & Join
                             </button>
@@ -533,7 +538,8 @@ function ContestDetail({ contestId, setPage }) {
                             <div className="info-card">
                                 <h3>📋 Contest Rules</h3>
                                 <ul>
-                                    <li>You have {contest.duration_minutes} minutes to solve {contest.problems?.length || contest.problem_count} problems</li>
+                                    <li>You have {contest.duration_minutes || 0} minutes to solve {contest.problems?.length || contest.problem_count || 0} problems</li>
+                                    <li>Contest starts on {formatDateTime(contest.start_time)}</li>
                                     <li>Each problem has a point value based on difficulty</li>
                                     <li>Penalty time is calculated for incorrect submissions</li>
                                     <li>Rankings are determined by total score, then by penalty time</li>
@@ -642,7 +648,7 @@ function ContestDetail({ contestId, setPage }) {
                                             </span>
                                         </span>
                                         <span className="col-score">{entry.total_score}</span>
-                                        <span className="col-solved">{entry.problems_solved}/{contest.problems?.length || 5}</span>
+                                        <span className="col-solved">{entry.problems_solved}/{contest.problems?.length || contest.problem_count || 0}</span>
                                         <span className="col-penalty">{entry.penalty_time}m</span>
                                     </div>
                                 ))}
@@ -664,7 +670,7 @@ function ContestDetail({ contestId, setPage }) {
                                 <span className="stat-label">Solved at least 1</span>
                             </div>
                             <div className="stat-card">
-                                <span className="stat-value">{leaderboard.filter(e => e.problems_solved === (contest.problems?.length || 5)).length}</span>
+                                <span className="col-value">{leaderboard.filter(e => e.problems_solved === (contest.problems?.length || contest.problem_count || 0)).length}</span>
                                 <span className="stat-label">Perfect Score</span>
                             </div>
                         </div>
@@ -696,7 +702,7 @@ function ContestDetail({ contestId, setPage }) {
                 {/* ========================= ADMIN TABS ========================= */}
 
                 {/* Admin: Participants */}
-                {activeTab === "participants" && isAdmin && (
+                {activeTab === "participants" && isActuallyAdmin && (
                     <div className="admin-tab-content">
                         <div className="admin-section-header">
                             <div>
@@ -765,7 +771,7 @@ function ContestDetail({ contestId, setPage }) {
                 )}
 
                 {/* Admin: Submissions Feed */}
-                {activeTab === "submissions_feed" && isAdmin && (
+                {activeTab === "submissions_feed" && isActuallyAdmin && (
                     <div className="admin-tab-content">
                         <div className="admin-section-header">
                             <div>
@@ -812,7 +818,7 @@ function ContestDetail({ contestId, setPage }) {
                 )}
 
                 {/* Admin: Controls */}
-                {activeTab === "controls" && isAdmin && (
+                {activeTab === "controls" && isActuallyAdmin && (
                     <div className="admin-tab-content">
                         <h2 className="admin-section-title">⚙️ Contest Controls</h2>
                         <p className="admin-section-subtitle">Manage the state and flow of this contest</p>

@@ -801,13 +801,13 @@ router.post("/:id/problems", async (req, res) => {
 router.post("/:id/submit", async (req, res) => {
     try {
         const { id } = req.params;
-        const { userId, problemId, code, language } = req.body;
+        const { userId, problemId, code, language, isPractice } = req.body;
 
         if (!userId || !problemId || !code) {
             return res.status(400).json({ error: "Missing required fields" });
         }
 
-        // Get contest and verify it's live
+        // Get contest and verify it's live (unless practicing after it finished)
         const contestResult = await query(
             `SELECT * FROM contests WHERE id = $1`,
             [id]
@@ -818,7 +818,8 @@ router.post("/:id/submit", async (req, res) => {
         }
 
         const contest = contestResult.rows[0];
-        if (contest.status !== "LIVE") {
+        
+        if (contest.status !== "LIVE" && !isPractice) {
             return res.status(400).json({ error: "Contest is not live" });
         }
 
@@ -886,7 +887,7 @@ router.post("/:id/submit", async (req, res) => {
         }
 
         const solved = allPassed && passedCount === totalCount;
-        const score = solved ? problem.points : 0;
+        const score = (solved && !isPractice) ? problem.points : 0; // No individual points in practice mode, only completion bonus
 
         // Record submission
         await query(
@@ -897,7 +898,7 @@ router.post("/:id/submit", async (req, res) => {
         );
 
         // Update participant stats if solved
-        if (solved) {
+        if (solved && !isPractice) {
             // Check if already solved
             const previousSolve = await query(
                 `SELECT * FROM contest_submissions 
@@ -942,38 +943,40 @@ router.post("/:id/submit", async (req, res) => {
             }
         }
 
-        // Update global user stats
-        try {
-            await query(
-                `UPDATE users SET 
-                 total_points = total_points + $1,
-                 problems_solved = CASE WHEN $2 = true AND NOT EXISTS (
-                     SELECT 1 FROM contest_submissions 
-                     WHERE user_id = $3 AND problem_id = $4 AND verdict = 'Accepted' AND id != (
-                        SELECT id FROM contest_submissions WHERE user_id = $3 AND problem_id = $4 ORDER BY id DESC LIMIT 1
-                     )
-                 ) THEN problems_solved + 1 ELSE problems_solved END,
-                 current_xp = current_xp + $1,
-                 experience_points = experience_points + $1,
-                 total_submissions = total_submissions + 1,
-                 accepted_submissions = CASE WHEN $2 = true THEN accepted_submissions + 1 ELSE accepted_submissions END,
-                 last_submission_date = CURRENT_DATE
-                 WHERE id = $3`,
-                [score, solved, userId, problemId]
-            );
+        // Update global user stats (Only for active contests, practice will have its own reward)
+        if (!isPractice) {
+            try {
+                await query(
+                    `UPDATE users SET 
+                     total_points = total_points + $1,
+                     problems_solved = CASE WHEN $2 = true AND NOT EXISTS (
+                         SELECT 1 FROM contest_submissions 
+                         WHERE user_id = $3 AND problem_id = $4 AND verdict = 'Accepted' AND id != (
+                            SELECT id FROM contest_submissions WHERE user_id = $3 AND problem_id = $4 ORDER BY id DESC LIMIT 1
+                         )
+                     ) THEN problems_solved + 1 ELSE problems_solved END,
+                     current_xp = current_xp + $1,
+                     experience_points = experience_points + $1,
+                     total_submissions = total_submissions + 1,
+                     accepted_submissions = CASE WHEN $2 = true THEN accepted_submissions + 1 ELSE accepted_submissions END,
+                     last_submission_date = CURRENT_DATE
+                     WHERE id = $3`,
+                    [score, solved, userId, problemId]
+                );
 
-            // Recalculate accuracy
-            await query(
-                `UPDATE users SET 
-                 accuracy_rate = CASE 
-                    WHEN total_submissions > 0 THEN (CAST(accepted_submissions AS FLOAT) / total_submissions) * 100 
-                    ELSE 0 
-                 END
-                 WHERE id = $1`,
-                [userId]
-            );
-        } catch (statErr) {
-            console.error("Failed to update user stats:", statErr);
+                // Recalculate accuracy
+                await query(
+                    `UPDATE users SET 
+                     accuracy_rate = CASE 
+                        WHEN total_submissions > 0 THEN (CAST(accepted_submissions AS FLOAT) / total_submissions) * 100 
+                        ELSE 0 
+                     END
+                     WHERE id = $1`,
+                    [userId]
+                );
+            } catch (statErr) {
+                console.error("Failed to update user stats:", statErr);
+            }
         }
 
         // Record Activity
@@ -982,7 +985,7 @@ router.post("/:id/submit", async (req, res) => {
                 `INSERT INTO activity_logs (user_id, activity_type, description, created_at)
                  VALUES ($1, $2, $3, NOW())`,
                 [userId, solved ? 'problem_solved' : 'problem_attempted',
-                    `${solved ? 'Solved' : 'Attempted'} problem "${problem.title}" in ${contest.title}`]
+                    `${solved ? 'Solved' : 'Attempted'} problem "${problem.title}" in ${contest.title}${isPractice ? ' (Practice)' : ''}`]
             );
         } catch (logErr) {
             console.error("Failed to log activity:", logErr);
@@ -998,8 +1001,56 @@ router.post("/:id/submit", async (req, res) => {
         });
 
     } catch (error) {
-        console.error("Error submitting solution:", error.stack);
-        res.status(500).json({ error: "Failed to submit solution", details: error.message });
+        console.error("Submission processing error:", error);
+        res.status(500).json({ error: "Failed to submit solution" });
+    }
+});
+
+// POST /api/contests/:id/practice-complete - Reward user 10 points for finishing all problems in practice
+router.post("/:id/practice-complete", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { userId } = req.body;
+
+        if (!userId) return res.status(400).json({ error: "Missing user ID" });
+
+        // Verify if user actually solved all problems
+        const allProbs = await query('SELECT id FROM contest_problems WHERE contest_id = $1', [id]);
+        const solvedProbs = await query(`SELECT DISTINCT problem_id FROM contest_submissions WHERE contest_id=$1 AND user_id=$2 AND verdict='Accepted'`, [id, userId]);
+
+        if (solvedProbs.rows.length >= allProbs.rows.length && allProbs.rows.length > 0) {
+            // Check if they already got the practice complete reward (maybe log it in activity logs)
+            const checkReward = await query(`
+                SELECT id FROM activity_logs 
+                WHERE user_id = $1 AND activity_type = 'contest_practice_completed' 
+                AND description LIKE $2
+            `, [userId, `%contest ${id}%`]);
+
+            if (checkReward.rows.length === 0) {
+                // Award 10 points!
+                await query(`
+                    UPDATE users SET 
+                        total_points = total_points + 10,
+                        current_xp = current_xp + 10,
+                        experience_points = experience_points + 10
+                    WHERE id = $1
+                `, [userId]);
+
+                await query(`
+                    INSERT INTO activity_logs (user_id, activity_type, description, created_at)
+                    VALUES ($1, $2, $3, NOW())
+                `, [userId, 'contest_practice_completed', `Completed all problems in contest ${id} (Practice)`]);
+
+                return res.json({ success: true, rewarded: true, pointsAwarded: 10, message: "Contest Practice Complted! You earned 10 points." });
+            } else {
+                return res.json({ success: true, rewarded: false, message: "Already rewarded for this contest." });
+            }
+        } else {
+            return res.json({ success: false, rewarded: false, message: "Not all problems solved yet." });
+        }
+    } catch (error) {
+        console.error("Practice completion error:", error);
+        res.status(500).json({ error: "Failed to process practice completion" });
     }
 });
 

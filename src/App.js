@@ -12,8 +12,10 @@ import UploadProject from "./pages/UploadProject";
 import ProfileSettings from "./pages/ProfileSettings";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminReports from "./pages/AdminReports";
+import AdminUsers from "./pages/AdminUsers";
 import NotificationsPage from "./pages/NotificationsPage";
 import ConnectionsPage from "./pages/ConnectionsPage";
+import Settings from "./pages/Settings";
 import Saved from "./pages/Saved";
 import InsightsPage from "./pages/InsightsPage";
 import OAuthCallback from "./pages/OAuthCallback";
@@ -21,6 +23,7 @@ import ContestList from "./pages/ContestList";
 import ContestDetail from "./pages/ContestDetail";
 import CreateContest from "./pages/CreateContest";
 import ContestArena from "./pages/ContestArena";
+import AdminContestList from "./pages/AdminContestList";
 import TopNav from "./components/TopNav";
 import LeftSidebar from "./components/LeftSidebar";
 import MenuDropdown from "./components/MenuDropdown";
@@ -82,9 +85,11 @@ function App() {
   // Apply theme
   useEffect(() => {
     if (isDarkTheme) {
+      document.body.classList.remove("light-theme");
       document.body.classList.add("dark-theme");
     } else {
       document.body.classList.remove("dark-theme");
+      document.body.classList.add("light-theme");
     }
     localStorage.setItem("codegenius-theme", isDarkTheme ? "dark" : "light");
   }, [isDarkTheme]);
@@ -131,19 +136,8 @@ function App() {
 
       {/* LOGGED IN - Dashboard Layout */}
       {isLoggedIn && (
-        <div className="layout-topnav">
-          {/* Top Navigation Bar - All Navigation */}
-          <TopNav
-            setPage={handleSetPage}
-            activePage={page}
-            userRole={userRole}
-            isDark={isDarkTheme}
-            toggleTheme={toggleTheme}
-            onLogout={handleLogout}
-            onMenuClick={() => setShowMenuDropdown(!showMenuDropdown)}
-          />
-
-          {/* Left Sidebar - Only for regular users */}
+        <div className="app-layout">
+          {/* Left Sidebar - Only for regular users, now the PRIMARY navigation */}
           {userRole !== "Admin" && (
             <LeftSidebar
               setPage={handleSetPage}
@@ -156,42 +150,61 @@ function App() {
             />
           )}
 
-          {/* Menu Dropdown - Only for regular users */}
-          {userRole !== "Admin" && (
-            <MenuDropdown
-              isOpen={showMenuDropdown}
-              onClose={() => setShowMenuDropdown(false)}
+          {/* Main content wrapper containing Header and Routes */}
+          <div className={`app-main-wrapper ${userRole === "Admin" ? "admin-full-width" : ""}`}>
+            {/* Top Navigation Bar - Now just a minimal Header */}
+            <TopNav
               setPage={handleSetPage}
+              activePage={page}
+              userRole={userRole}
               isDark={isDarkTheme}
               toggleTheme={toggleTheme}
               onLogout={handleLogout}
-              user={userData}
+              onMenuClick={() => setShowMenuDropdown(!showMenuDropdown)}
             />
-          )}
 
-          {/* Main content area */}
-          <main className={`main-content${userRole === "Admin" ? " admin-main-content" : ""}`}>
-            {page === "dashboard" && <Dashboard key={dashboardKey} setPage={handleSetPage} />}
-            {page === "analyzer" && <CodeAnalyzer />}
-            {page === "converter" && <CodeConverter />}
-            {page === "problemSolving" && <ProblemSolving />}
-            {page === "leaderboard" && <Leaderboard />}
-            {page === "upload" && <UploadProject />}
-            {page === "profile" && <ProfileSettings isDark={isDarkTheme} toggleTheme={toggleTheme} setIsLoggedIn={setIsLoggedIn} setPage={handleSetPage} onLogout={handleLogout} />}
-            {page === "admin" && userRole === "Admin" && <AdminDashboard onLogout={handleLogout} isDark={isDarkTheme} toggleTheme={toggleTheme} setPage={handleSetPage} />}
-            {page === "reports" && userRole === "Admin" && <AdminReports />}
-            {page === "notifications" && <NotificationsPage setPage={handleSetPage} />}
-            {page === "connections" && <ConnectionsPage setPage={handleSetPage} />}
-            {page === "saved" && <Saved />}
-            {page === "insights" && <InsightsPage setPage={handleSetPage} />}
+            {/* Menu Dropdown - Mobile only */}
+            {userRole !== "Admin" && (
+              <MenuDropdown
+                isOpen={showMenuDropdown}
+                onClose={() => setShowMenuDropdown(false)}
+                setPage={handleSetPage}
+                isDark={isDarkTheme}
+                toggleTheme={toggleTheme}
+                onLogout={handleLogout}
+                user={userData}
+              />
+            )}
 
-            {/* Contest System Pages */}
-            {page === "contests" && <ContestList setPage={handleSetPage} />}
-            {page === "createContest" && <CreateContest setPage={handleSetPage} />}
-            {page?.name === "contestDetail" && <ContestDetail contestId={page.contestId} setPage={handleSetPage} />}
-            {page?.name === "contestArena" && <ContestArena contestId={page.contestId} setPage={handleSetPage} />}
-            {page?.name === "contestPractice" && <ContestArena contestId={page.contestId} setPage={handleSetPage} mode="practice" />}
-          </main>
+            {/* Main content area */}
+            <main className="app-main-content">
+              {page === "dashboard" && <Dashboard key={dashboardKey} setPage={handleSetPage} />}
+              {page === "analyzer" && <CodeAnalyzer />}
+              {page === "converter" && <CodeConverter />}
+              {(page === "problemSolving" || page?.name === "problemSolving") && (
+                <ProblemSolving problemData={page?.problem} />
+              )}
+              {page === "leaderboard" && <Leaderboard />}
+              {page === "upload" && <UploadProject />}
+              {page === "profile" && <ProfileSettings isDark={isDarkTheme} toggleTheme={toggleTheme} setIsLoggedIn={setIsLoggedIn} setPage={handleSetPage} onLogout={handleLogout} />}
+              {page === "settings" && <Settings isDark={isDarkTheme} toggleTheme={toggleTheme} setIsLoggedIn={setIsLoggedIn} setPage={handleSetPage} />}
+              {page === "admin" && userRole === "Admin" && <AdminDashboard onLogout={handleLogout} isDark={isDarkTheme} toggleTheme={toggleTheme} setPage={handleSetPage} />}
+              {page === "reports" && userRole === "Admin" && <AdminReports />}
+              {page === "adminUsers" && userRole === "Admin" && <AdminUsers setPage={handleSetPage} />}
+              {page === "notifications" && <NotificationsPage setPage={handleSetPage} />}
+              {page === "connections" && <ConnectionsPage setPage={handleSetPage} />}
+              {page === "saved" && <Saved />}
+              {page === "insights" && <InsightsPage setPage={handleSetPage} />}
+              {page === "adminContests" && userRole === "Admin" && <AdminContestList setPage={handleSetPage} />}
+
+              {/* Contest System Pages */}
+              {page === "contests" && <ContestList setPage={handleSetPage} />}
+              {page === "createContest" && <CreateContest setPage={handleSetPage} />}
+              {page?.name === "contestDetail" && <ContestDetail contestId={page.contestId} setPage={handleSetPage} isAdmin={userRole === "Admin"} />}
+              {page?.name === "contestArena" && <ContestArena contestId={page.contestId} setPage={handleSetPage} />}
+              {page?.name === "contestPractice" && <ContestArena contestId={page.contestId} setPage={handleSetPage} mode="practice" />}
+            </main>
+          </div>
 
           {/* Report Modal - Only for regular users */}
           {userRole !== "Admin" && (

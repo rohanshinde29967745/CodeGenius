@@ -1,6 +1,7 @@
-﻿// CreateContest.jsx - Create New Contest Page
+// CreateContest.jsx - Create New Contest Page
 import React, { useState, useEffect } from "react";
 import "../App.css";
+import "./ContestList.css";
 import { getCurrentUser } from "../services/api";
 
 function CreateContest({ setPage }) {
@@ -304,8 +305,8 @@ function CreateContest({ setPage }) {
                 }
             }
 
-            alert("ðŸŽ‰ Contest created successfully!");
-            setPage("contests");
+            alert("🎉 Contest created successfully!");
+            setPage(isAdmin ? "adminContests" : "contests");
         } catch (err) {
             console.error("Failed to create contest:", err);
             setError(err.message || "Failed to create contest. Please try again.");
@@ -396,8 +397,9 @@ function CreateContest({ setPage }) {
                 </div>
             </div>
 
-            <div className="form-group">
+            <div className="form-group visibility-section">
                 <label>Visibility</label>
+                <div className="visibility-header-note">Choose who can participate in your contest</div>
                 <div className="visibility-options">
                     <button
                         className={`visibility-btn ${formData.visibility === "PUBLIC" ? "active" : ""}`}
@@ -505,7 +507,7 @@ function CreateContest({ setPage }) {
             </div>
 
             <div className="step-actions">
-                <button className="secondary-btn" onClick={() => setPage("contests")}>
+                <button className="secondary-btn" onClick={() => setPage(isAdmin ? "adminContests" : "contests")}>
                     Cancel
                 </button>
                 <button
@@ -667,7 +669,7 @@ function CreateContest({ setPage }) {
                             <li>✅ Reach Silver level or higher</li>
                         </ul>
                     </div>
-                    <button className="back-btn" onClick={() => setPage("contests")}>
+                    <button className="back-btn" onClick={() => setPage(isAdmin ? "adminContests" : "contests")}>
                         ← Back to Contests
                     </button>
                 </div>
@@ -679,18 +681,24 @@ function CreateContest({ setPage }) {
         <div className="create-contest-page">
             {/* Header */}
             <div className="create-contest-header">
-                <button className="back-btn" onClick={() => setPage("contests")}>
-                    <span>←</span> Back to Contests
-                </button>
+                <div className="header-left">
+                    <button className="back-btn" onClick={() => setPage(isAdmin ? "adminContests" : "contests")}>
+                        <span>←</span> Back to Contests
+                    </button>
+                </div>
+                
                 <h1 className="page-title">
                     <span>🏆</span> Create New Contest
                 </h1>
-                {cardStatus?.hasActiveCard && (
-                    <div className="card-info-badge">
-                        <span>🎴</span>
-                        Card expires: {new Date(cardStatus.expiresAt).toLocaleTimeString()}
-                    </div>
-                )}
+
+                <div className="header-right">
+                    {cardStatus?.hasActiveCard && (
+                        <div className="card-info-badge">
+                            <span>🎴</span>
+                            Card expires: {new Date(cardStatus.expiresAt).toLocaleTimeString()}
+                        </div>
+                    )}
+                </div>
             </div>
 
             {/* Progress Steps */}

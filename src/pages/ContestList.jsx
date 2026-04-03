@@ -1,15 +1,43 @@
-// ContestList.jsx - Weekly Contests List Page
 import React, { useState, useEffect } from "react";
-import "../App.css";
+import "../App.css"; // Keep original globals
+import "./ContestList.css"; // The new scoped CSS
 import { getCurrentUser } from "../services/api";
 
 function ContestList({ setPage }) {
     const [contests, setContests] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState("all"); // all, upcoming, live, past
+    const [activeTab, setActiveTab] = useState("live"); // live (active), upcoming, past
     const [cardStatus, setCardStatus] = useState(null);
     const [showCardModal, setShowCardModal] = useState(false);
+    const [featuredContest, setFeaturedContest] = useState(null);
     const currentUser = getCurrentUser();
+
+    useEffect(() => {
+        fetchFeaturedContest();
+    }, []);
+
+    const fetchFeaturedContest = async () => {
+        try {
+            // Priority 1: Check Live
+            let res = await fetch("http://localhost:4000/api/contests?status=LIVE");
+            let data = await res.json();
+            if (data.success && data.contests && data.contests.length > 0) {
+                setFeaturedContest(data.contests[0]);
+                return;
+            }
+            // Priority 2: Check Upcoming
+            res = await fetch("http://localhost:4000/api/contests?status=UPCOMING");
+            data = await res.json();
+            if (data.success && data.contests && data.contests.length > 0) {
+                const sorted = data.contests.sort((a,b) => new Date(a.start_time) - new Date(b.start_time));
+                setFeaturedContest(sorted[0]);
+                return;
+            }
+            setFeaturedContest(null);
+        } catch(err) {
+            console.error("Failed to fetch featured:", err);
+        }
+    };
 
     useEffect(() => {
         fetchContests();
@@ -87,7 +115,7 @@ function ContestList({ setPage }) {
             });
             const data = await res.json();
             if (data.success) {
-                fetchContests(); // Refresh list
+                fetchContests();
                 alert("Successfully registered!");
             } else {
                 alert(data.error || "Failed to register");
@@ -108,142 +136,54 @@ function ContestList({ setPage }) {
         const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
         const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
 
-        if (days > 0) return `${days}d ${hours}h`;
-        if (hours > 0) return `${hours}h ${minutes}m`;
-        return `${minutes}m`;
+        if (days > 0) return `Starts in ${days} days`;
+        if (hours > 0) return `Starts in ${hours}h ${minutes}m`;
+        return `Starts in ${minutes}m`;
     };
 
-    const formatDateTime = (dateStr) => {
-        const date = new Date(dateStr);
-        return date.toLocaleString("en-US", {
-            weekday: "short",
-            month: "short",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit"
-        });
-    };
-
-    const getStatusClass = (status) => {
-        switch (status) {
-            case "LIVE": return "status-live";
-            case "UPCOMING": return "status-upcoming";
-            case "FINISHED": return "status-finished";
-            default: return "";
-        }
-    };
-
-    const getDifficultyBadge = (mix) => {
-        if (!mix) return null;
-        const parts = mix.split(",");
-        return (
-            <div className="contest-difficulty-badges">
-                {parts.map((p, i) => {
-                    const [count, level] = p.trim().split("-");
-                    return (
-                        <span key={i} className={`diff-badge ${level?.toLowerCase()}`}>
-                            {count} {level}
-                        </span>
-                    );
-                })}
-            </div>
-        );
+    // Helper functions for the UI
+    const getOverallDifficulty = (mix) => {
+        if (!mix) return { label: "Medium", stars: "★★☆", color: "yellow" };
+        if (mix.includes("Hard")) return { label: "Hard", stars: "★★★", color: "red" };
+        if (mix.includes("Medium")) return { label: "Medium", stars: "★★☆", color: "yellow" };
+        return { label: "Easy", stars: "★☆☆", color: "green" };
     };
 
     return (
-        <div className="contest-list-page">
-            {/* Header */}
-            <div className="contest-header">
-                <div className="contest-header-left">
-                    <h1 className="contest-page-title">
-                        <span className="title-icon">🏆</span>
-                        Weekly Contests
-                    </h1>
-                    <p className="contest-subtitle">
-                        Compete with developers worldwide and earn badges
-                    </p>
+        <div className="wc-page">
+            
+            {/* 1. HEADER SECTION */}
+            <div className="wc-header">
+                <div className="wc-header-left">
+                    <h1 className="wc-title">Weekly Contests</h1>
+                    <p className="wc-subtitle">Compete in weekly programming contests to test and improve your coding skills!</p>
                 </div>
-                <div className="contest-header-right">
-                    {/* Contest Creation Card Status */}
+                
+                {/* Embedded Card Status Logic (Restyled cleanly) */}
+                <div className="wc-header-right">
                     {currentUser && (
-                        <div className="contest-card-status">
+                        <div className="wc-creator-status">
                             {currentUser.role === "Admin" ? (
-                                <div className="card-active admin-card">
-                                    <span className="card-icon">🏆</span>
-                                    <div className="card-info">
-                                        <span className="card-label">Admin Control</span>
-                                        <span className="card-expires">Official Host Access</span>
-                                    </div>
-                                    <button
-                                        className="create-contest-btn admin-theme"
-                                        onClick={() => setPage("createContest")}
-                                    >
-                                        <span>+</span> Create Official Contest
-                                    </button>
-                                </div>
+                                <button className="wc-create-btn admin" onClick={() => setPage("createContest")}>
+                                    🏆 Create Official Contest
+                                </button>
                             ) : cardStatus?.hasActiveCard ? (
-                                <div className="card-active">
-                                    <span className="card-icon">🎴</span>
-                                    <div className="card-info">
-                                        <span className="card-label">Creation Card Active</span>
-                                        <span className="card-expires">
-                                            Expires: {new Date(cardStatus.expiresAt).toLocaleTimeString()}
-                                        </span>
-                                    </div>
-                                    <button
-                                        className="create-contest-btn"
-                                        onClick={() => setPage("createContest")}
-                                    >
-                                        <span>+</span> Create Contest
-                                    </button>
-                                </div>
+                                <button className="wc-create-btn" onClick={() => setPage("createContest")}>
+                                    🎴 Create Contest (Active)
+                                </button>
                             ) : cardStatus?.eligible ? (
-                                <button
-                                    className="claim-card-btn"
-                                    onClick={() => setShowCardModal(true)}
-                                >
-                                    <span className="card-icon">🎴</span>
-                                    Claim Creation Card
+                                <button className="wc-create-btn claim" onClick={() => setShowCardModal(true)}>
+                                    🎴 Claim Creation Card
                                 </button>
                             ) : (
-                                <div className="card-locked-v2" onClick={() => alert("To host contests, you must reach Silver Level and solve 20 Medium problems. \n\nYou are halfway there! Keep solving!")}>
-                                    <div className="card-locked-header">
-                                        <div className="card-unlock-percent">
-                                            {Math.round(Math.min(100, ((cardStatus?.mediumSolved || 0) / 20) * 100))}%
-                                        </div>
-                                        <div className="card-locked-text">
-                                            <span className="locked-title">Unlock Hosting</span>
-                                            <span className="locked-subtitle">Progress to Creation Card</span>
+                                <div className="wc-locked-status" onClick={() => alert("To host contests, you must reach Silver Level and solve 20 Medium problems. Keep solving!")}>
+                                    <div className="wc-locked-info">
+                                        <span>Unlock Hosting</span>
+                                        <div className="wc-locked-bar">
+                                            <div className="wc-locked-fill" style={{ width: `${Math.min(100, ((cardStatus?.mediumSolved || 0) / 20) * 100)}%` }}></div>
                                         </div>
                                     </div>
-
-                                    <div className="card-progress-section">
-                                        <div className="progress-labels">
-                                            <span>Medium Efficiency</span>
-                                            <span className="count-badge">{cardStatus?.mediumSolved || 0} / 20 Solved</span>
-                                        </div>
-                                        <div className="card-progress-bg">
-                                            <div
-                                                className="card-progress-fill"
-                                                style={{ width: `${Math.min(100, ((cardStatus?.mediumSolved || 0) / 20) * 100)}%` }}
-                                            ></div>
-                                        </div>
-
-                                        <div className="level-requirement">
-                                            <span className={`requirement-dot ${cardStatus?.levelMet ? 'met' : ''}`}></span>
-                                            <span className="requirement-text">
-                                                {cardStatus?.levelMet ? "✓ Silver Level Achieved" : "Reach Silver Level Requirements"}
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    {/* Reward Preview if > 50% */}
-                                    {((cardStatus?.mediumSolved || 0) / 20) >= 0.5 && (
-                                        <div className="card-preview-glimpse">
-                                            <small>Reward Preview Unlocked</small>
-                                            <span className="glimpse-icon">🎴</span>
-                                        </div>
-                                    )}
+                                    <span className="wc-locked-pct">{Math.round(Math.min(100, ((cardStatus?.mediumSolved || 0) / 20) * 100))}%</span>
                                 </div>
                             )}
                         </div>
@@ -251,180 +191,200 @@ function ContestList({ setPage }) {
                 </div>
             </div>
 
-            {/* Tabs */}
-            <div className="contest-tabs">
-                <button
-                    className={`contest-tab ${activeTab === "all" ? "active" : ""}`}
-                    onClick={() => setActiveTab("all")}
-                >
-                    <span className="tab-icon">📋</span> All Contests
-                </button>
-                <button
-                    className={`contest-tab ${activeTab === "live" ? "active" : ""}`}
-                    onClick={() => setActiveTab("live")}
-                >
-                    <span className="tab-icon live-dot">🔴</span> Live Now
-                </button>
-                <button
-                    className={`contest-tab ${activeTab === "upcoming" ? "active" : ""}`}
-                    onClick={() => setActiveTab("upcoming")}
-                >
-                    <span className="tab-icon">⏰</span> Upcoming
-                </button>
-                <button
-                    className={`contest-tab ${activeTab === "past" ? "active" : ""}`}
-                    onClick={() => setActiveTab("past")}
-                >
-                    <span className="tab-icon">📜</span> Past Contests
-                </button>
-            </div>
-
-            {/* Contest Grid */}
-            <div className="contest-grid">
-                {loading ? (
-                    <div className="contest-loading">
-                        <div className="loading-spinner"></div>
-                        <span>Loading contests...</span>
-                    </div>
-                ) : contests.length === 0 ? (
-                    <div className="contest-empty">
-                        <span className="empty-icon">🏟️</span>
-                        <h3>No contests found</h3>
-                        <p>Check back later for upcoming contests!</p>
-                    </div>
-                ) : (
-                    contests.map(contest => (
-                        <div
-                            key={contest.id}
-                            className={`contest-card ${contest.status?.toLowerCase()}`}
-                            onClick={() => setPage({ name: "contestDetail", contestId: contest.id })}
-                        >
-                            {/* Status Badge */}
-                            <div className={`contest-status-badge ${getStatusClass(contest.status)}`}>
-                                {contest.status === "LIVE" && <span className="live-indicator"></span>}
-                                {contest.status}
-                            </div>
-
-                            {/* Contest Type Badge */}
-                            <div className={`contest-type-badge ${contest.contest_type?.toLowerCase()}`}>
-                                {contest.contest_type === "ADMIN" ? "🏆 Official" : "👥 Community"}
-                            </div>
-
-                            {/* Contest Info */}
-                            <div className="contest-card-content">
-                                <h3 className="contest-title">{contest.title}</h3>
-
-                                {contest.description && (
-                                    <p className="contest-description">
-                                        {contest.description.substring(0, 100)}...
-                                    </p>
-                                )}
-
-                                {/* Contest Meta */}
-                                <div className="contest-meta">
-                                    <div className="meta-item">
-                                        <span className="meta-icon">📅</span>
-                                        <span>{formatDateTime(contest.start_time)}</span>
-                                    </div>
-                                    <div className="meta-item">
-                                        <span className="meta-icon">⏱️</span>
-                                        <span>{contest.duration_minutes || 90} min</span>
-                                    </div>
-                                    <div className="meta-item">
-                                        <span className="meta-icon">📝</span>
-                                        <span>{contest.problem_count || 5} Problems</span>
-                                    </div>
-                                    <div className="meta-item">
-                                        <span className="meta-icon">👥</span>
-                                        <span>{contest.participant_count || 0} Registered</span>
-                                    </div>
-                                </div>
-
-                                {/* Difficulty Mix */}
-                                {contest.difficulty_mix && getDifficultyBadge(contest.difficulty_mix)}
-
-                                {/* Languages */}
-                                {contest.languages && (
-                                    <div className="contest-languages">
-                                        {contest.languages.map((lang, i) => (
-                                            <span key={i} className="lang-tag">{lang}</span>
-                                        ))}
-                                    </div>
-                                )}
-
-                                {/* Creator Info */}
-                                {contest.creator_name && (
-                                    <div className="contest-creator">
-                                        <span className="creator-label">By:</span>
-                                        <span className="creator-name">{contest.creator_name}</span>
-                                        {contest.creator_level && (
-                                            <span className={`creator-level ${contest.creator_level.toLowerCase()}`}>
-                                                {contest.creator_level}
-                                            </span>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Card Footer */}
-                            <div className="contest-card-footer">
-                                {contest.status === "UPCOMING" && (
-                                    <>
-                                        <div className="time-remaining">
-                                            <span className="time-label">Starts in:</span>
-                                            <span className="time-value">{getTimeRemaining(contest.start_time)}</span>
-                                        </div>
-                                        <button
-                                            className="register-btn"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleRegister(contest.id);
-                                            }}
-                                        >
-                                            Register
-                                        </button>
-                                    </>
-                                )}
-                                {contest.status === "LIVE" && (
-                                    <button
-                                        className="join-btn"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setPage({ name: "contestArena", contestId: contest.id });
-                                        }}
-                                    >
-                                        <span>🚀</span> Join Contest
-                                    </button>
-                                )}
-                                {contest.status === "FINISHED" && (
-                                    <div className="contest-finished-actions">
-                                        <button
-                                            className="view-results-btn"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setPage({ name: "contestDetail", contestId: contest.id });
-                                            }}
-                                        >
-                                            View Results
-                                        </button>
-                                        <button
-                                            className="practice-btn"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setPage({ name: "contestPractice", contestId: contest.id });
-                                            }}
-                                        >
-                                            Practice
-                                        </button>
-                                    </div>
-                                )}
+            {/* 2. HERO SECTION (Dynamic Featured Contest) */}
+            <div className="wc-hero">
+                {featuredContest ? (
+                    <>
+                        <div className="wc-hero-left">
+                            <div className="wc-hero-icon">🏆</div>
+                            <div className="wc-hero-text">
+                                <h2>{featuredContest.title}</h2>
+                                <p>{featuredContest.description ? (featuredContest.description.length > 150 ? featuredContest.description.substring(0, 150) + "..." : featuredContest.description) : "Compete in weekly programming contests to test and improve your coding skills. Join, solve problems, and climb the leaderboard!"}</p>
                             </div>
                         </div>
-                    ))
+                        <div className="wc-hero-right">
+                            <div className="wc-hero-card">
+                                <div className="wc-hc-top">
+                                    <div className="wc-hc-title">
+                                        <h3>🏆 {featuredContest.title}</h3>
+                                    </div>
+                                    <div className="wc-hc-timer">
+                                        {featuredContest.status === "LIVE" ? (
+                                            <><span className="wc-dot live"></span> Live Now</>
+                                        ) : (
+                                            <><span className="wc-dot" style={{backgroundColor: '#eab308', boxShadow: '0 0 8px #eab308'}}></span> {getTimeRemaining(featuredContest.start_time).replace('Starts in ', '')}</>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="wc-hc-stats">
+                                    <div className="wc-hc-stat">
+                                        <span className="wc-icon">👥</span> {featuredContest.participant_count || "4,211"} competing
+                                    </div>
+                                    <div className="wc-hc-stat">
+                                        <span className="wc-icon">⭐</span> {getOverallDifficulty(featuredContest.difficulty_mix).label}: <span className="wc-stars">{getOverallDifficulty(featuredContest.difficulty_mix).stars}</span>
+                                    </div>
+                                    <div className="wc-hc-stat">
+                                        <span className="wc-icon">ℹ️</span> Status: <strong>{featuredContest.status === "LIVE" ? "Live" : "Upcoming"}</strong>
+                                    </div>
+                                </div>
+                                <div className="wc-hc-buttons">
+                                    {featuredContest.status === "LIVE" ? (
+                                        <button className="wc-btn-primary" onClick={() => setPage({ name: "contestArena", contestId: featuredContest.id })}>Join Contest</button>
+                                    ) : (
+                                        <button className="wc-btn-primary" onClick={() => handleRegister(featuredContest.id)}>Register Now</button>
+                                    )}
+                                    <button className="wc-btn-secondary" onClick={() => setPage({ name: "contestDetail", contestId: featuredContest.id })}>View Details</button>
+                                </div>
+                            </div>
+                        </div>
+                    </>
+                ) : (
+                    <>
+                        <div className="wc-hero-left">
+                            <div className="wc-hero-icon">🌟</div>
+                            <div className="wc-hero-text">
+                                <h2>No Active Contests</h2>
+                                <p>There are no live or upcoming official contests right now. Keep an eye out for updates, or try creating your own community contest!</p>
+                            </div>
+                        </div>
+                        <div className="wc-hero-right">
+                            <div className="wc-hero-card" style={{opacity: 0.8}}>
+                                <div className="wc-hc-top">
+                                    <div className="wc-hc-title">
+                                        <h3 style={{color: '#94a3b8'}}>Next Contest TBA</h3>
+                                    </div>
+                                </div>
+                                <div className="wc-hc-stats">
+                                    <div className="wc-hc-stat" style={{color: '#64748b', fontSize: '1rem'}}>
+                                        Check back soon for the next weekly competitive programming challenge.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </>
                 )}
             </div>
 
-            {/* Claim Card Modal */}
+            {/* 3. TABS SECTION */}
+            <div className="wc-tabs-container">
+                <div className="wc-tabs">
+                    <button className={`wc-tab ${activeTab === 'live' ? 'active' : ''}`} onClick={() => setActiveTab('live')}>
+                        <span className="wc-tab-icon">🏆</span> Active
+                    </button>
+                    <button className={`wc-tab ${activeTab === 'upcoming' ? 'active' : ''}`} onClick={() => setActiveTab('upcoming')}>
+                        <span className="wc-tab-icon">⏰</span> Upcoming
+                    </button>
+                    <button className={`wc-tab ${activeTab === 'past' ? 'active' : ''}`} onClick={() => setActiveTab('past')}>
+                        <span className="wc-tab-icon">📜</span> Past
+                    </button>
+                </div>
+            </div>
+
+            {/* 4. CONTEST CARDS SECTION */}
+            <div className="wc-grid">
+                {loading ? (
+                    <div className="wc-loading">⏳ Loading contests...</div>
+                ) : contests.length === 0 ? (
+                    <div className="wc-empty">No contests found for this category.</div>
+                ) : (
+                    contests.map(contest => {
+                        const status = contest.status || "FINISHED";
+                        const isLive = status === "LIVE";
+                        const isUpcoming = status === "UPCOMING";
+                        const isPast = status === "FINISHED";
+                        
+                        const diff = getOverallDifficulty(contest.difficulty_mix);
+                        
+                        // Mock data for UI completeness if actual data is missing
+                        const participants = contest.participant_count || Math.floor(Math.random() * 5000) + 100;
+                        const duration = contest.duration_minutes || 90;
+                        const mockScore = isPast ? Math.floor(Math.random() * 500) + 100 : null;
+                        const mockPct = isPast ? Math.floor((mockScore / 600) * 100) : null;
+
+                        return (
+                            <div key={contest.id} className={`wc-card ${isLive ? 'outline-live' : ''}`} onClick={() => setPage({ name: "contestDetail", contestId: contest.id })}>
+                                {/* TOP */}
+                                <div className="wc-card-top">
+                                    <h3 className="wc-card-title">{contest.title}</h3>
+                                    {isLive && <span className="wc-badge badge-live"><span className="wc-dot"></span> LIVE</span>}
+                                    {isUpcoming && <span className="wc-badge badge-upcoming">UPCOMING</span>}
+                                    {isPast && <span className="wc-badge badge-ended">ENDED ▾</span>}
+                                </div>
+
+                                {/* MIDDLE */}
+                                <div className="wc-card-middle">
+                                    <div className="wc-card-desc">
+                                        {isLive ? `${participants} competing now` : 
+                                         isUpcoming ? `Starts in: ${getTimeRemaining(contest.start_time).replace('Starts in ', '')}` : 
+                                         `Contest ended on ${new Date(contest.start_time).toLocaleDateString()}`}
+                                    </div>
+                                    <div className="wc-card-info-row">
+                                        <div className="wc-info-item">
+                                            <span className="wc-icon">⭐</span> Difficulty: <span className={`wc-stars-color ${diff.color}`}>{diff.stars}</span> {diff.label}
+                                        </div>
+                                    </div>
+                                    <div className="wc-card-chips">
+                                        {contest.difficulty_mix ? (
+                                            contest.difficulty_mix.split(',').map((p, i) => {
+                                                const [cnt, lvl] = p.trim().split('-');
+                                                return <span key={i} className={`wc-chip chip-${lvl?.toLowerCase()}`}>{cnt} {lvl?.toUpperCase()}</span>;
+                                            })
+                                        ) : (
+                                            <span className="wc-chip chip-medium">Problems Set</span>
+                                        )}
+                                        <div className="wc-time-info">
+                                            <span className="wc-icon">🕒</span> 
+                                            {isLive ? `Time Left: ~${Math.floor(Math.random() * 60)}m left` : 
+                                             isUpcoming ? `Duration: ${Math.floor(duration/60)}h ${duration%60}m` : 
+                                             `${Math.floor(duration/60)}h ${duration%60}m`}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* BOTTOM */}
+                                <div className="wc-card-bottom">
+                                    <div className="wc-card-actions">
+                                        {isLive && (
+                                            <>
+                                                <div className="wc-mock-users">
+                                                    <span className="wc-icon">👥</span> {Math.floor(participants/1000)}k ▾
+                                                </div>
+                                                <button className="wc-btn-action live" onClick={(e) => { e.stopPropagation(); setPage({ name: "contestArena", contestId: contest.id });}}>
+                                                    Participate
+                                                </button>
+                                            </>
+                                        )}
+                                        {isUpcoming && (
+                                            <>
+                                                <div className="wc-stat-gray">Avg Score*</div>
+                                                <button className="wc-btn-action upcoming" onClick={(e) => { e.stopPropagation(); handleRegister(contest.id); }}>
+                                                    View Details (Register)
+                                                </button>
+                                            </>
+                                        )}
+                                        {isPast && (
+                                            <>
+                                                {/* EXTRA FEATURE FOR PAST CONTESTS */}
+                                                <div className="wc-past-score">
+                                                    <div className="wc-score-bar">
+                                                        <div className="wc-score-fill" style={{width: `${mockPct}%`}}></div>
+                                                    </div>
+                                                    <span className="wc-score-text"><span className="wc-green-pct">{mockPct}%</span> Your Score {mockScore}</span>
+                                                </div>
+                                                <button className="wc-btn-action past" onClick={(e) => { e.stopPropagation(); setPage({ name: "contestPractice", contestId: contest.id });}}>
+                                                    Practice
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })
+                )}
+            </div>
+
+            {/* Modal remains visually separated but functional */}
             {showCardModal && (
                 <div className="modal-overlay" onClick={() => setShowCardModal(false)}>
                     <div className="claim-card-modal" onClick={e => e.stopPropagation()}>

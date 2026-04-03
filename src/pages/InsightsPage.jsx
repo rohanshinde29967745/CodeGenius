@@ -24,6 +24,8 @@ import {
     getInsightsAIReport
 } from '../services/api';
 
+import "./InsightsPage.css"; // Isolated CSS
+
 // Register Chart.js components
 ChartJS.register(
     CategoryScale,
@@ -46,7 +48,6 @@ function InsightsPage({ setPage }) {
     const [generatingReport, setGeneratingReport] = useState(false);
     const [error, setError] = useState(null);
 
-    // Real data from API
     const [stats, setStats] = useState({
         totalProblems: 0,
         totalProjects: 0,
@@ -57,74 +58,53 @@ function InsightsPage({ setPage }) {
     });
 
     const [heatmapData, setHeatmapData] = useState([]);
-    const [progressData, setProgressData] = useState({
-        labels: [],
-        datasets: []
-    });
+    const [progressData, setProgressData] = useState({ labels: [], datasets: [] });
     const [skillsData, setSkillsData] = useState({
         labels: ['JavaScript', 'Python', 'Java', 'C++', 'React', 'SQL'],
         datasets: [{
             label: 'Proficiency',
             data: [0, 0, 0, 0, 0, 0],
-            backgroundColor: 'rgba(102, 126, 234, 0.2)',
-            borderColor: '#667eea',
-            pointBackgroundColor: '#667eea',
+            backgroundColor: 'rgba(79, 70, 229, 0.2)',
+            borderColor: '#4f46e5',
+            pointBackgroundColor: '#4f46e5',
             pointBorderColor: '#fff',
             pointHoverBackgroundColor: '#fff',
-            pointHoverBorderColor: '#667eea'
+            pointHoverBorderColor: '#4f46e5'
         }]
     });
     const [timeData, setTimeData] = useState({
-        labels: ['Problem Solving', 'Projects', 'Learning', 'Code Review'],
+        labels: ['Problem Solving', 'Projects', 'Learning', 'Misc'],
         datasets: [{
             data: [25, 25, 25, 25],
-            backgroundColor: [
-                'rgba(102, 126, 234, 0.8)',
-                'rgba(16, 185, 129, 0.8)',
-                'rgba(245, 158, 11, 0.8)',
-                'rgba(239, 68, 68, 0.8)'
-            ],
-            borderColor: ['#667eea', '#10b981', '#f59e0b', '#ef4444'],
-            borderWidth: 2
+            backgroundColor: ['#4f46e5', '#10b981', '#f59e0b', '#ef4444'],
+            borderColor: ['#4f46e5', '#10b981', '#f59e0b', '#ef4444'],
+            borderWidth: 0
         }]
     });
 
-    // Load all insights data
-    useEffect(() => {
-        loadInsightsData();
-    }, []);
+    useEffect(() => { loadInsightsData(); }, []);
 
-    // Reload progress data when range changes
     useEffect(() => {
         const user = getCurrentUser();
-        if (user?.id) {
-            loadProgressData(user.id, activeRange);
-        }
+        if (user?.id) { loadProgressData(user.id, activeRange); }
     }, [activeRange]);
 
     const loadInsightsData = async () => {
         setLoading(true);
         setError(null);
-
         try {
             const user = getCurrentUser();
-            if (!user?.id) {
-                setError("Please log in to view insights");
-                setLoading(false);
-                return;
-            }
+            if (!user?.id) { setError("Please log in to view insights"); setLoading(false); return; }
 
-            // Load all data in parallel
             const [summaryData, heatmapResult, progressResult, skillsResult, timeResult] = await Promise.all([
-                getInsightsSummary(user.id),
-                getInsightsHeatmap(user.id),
-                getInsightsProgress(user.id, activeRange),
-                getInsightsSkills(user.id),
-                getInsightsTimeAnalytics(user.id)
+                getInsightsSummary(user.id).catch(() => ({})),
+                getInsightsHeatmap(user.id).catch(() => ([])),
+                getInsightsProgress(user.id, activeRange).catch(() => ({})),
+                getInsightsSkills(user.id).catch(() => ({})),
+                getInsightsTimeAnalytics(user.id).catch(() => ({}))
             ]);
 
-            // Set summary stats
-            if (!summaryData.error) {
+            if (summaryData && !summaryData.error) {
                 setStats({
                     totalProblems: summaryData.totalProblems || 0,
                     totalProjects: summaryData.totalProjects || 0,
@@ -135,77 +115,49 @@ function InsightsPage({ setPage }) {
                 });
             }
 
-            // Set heatmap data
-            if (Array.isArray(heatmapResult)) {
-                setHeatmapData(heatmapResult);
-            }
+            if (Array.isArray(heatmapResult)) setHeatmapData(heatmapResult);
 
-            // Set progress chart data
-            if (!progressResult.error) {
+            if (progressResult && !progressResult.error) {
                 setProgressData({
                     labels: progressResult.labels || [],
                     datasets: [
-                        {
-                            label: 'XP Gained',
-                            data: progressResult.xpData || [],
-                            borderColor: '#667eea',
-                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
-                            fill: true,
-                            tension: 0.4
-                        },
-                        {
-                            label: 'Problems Solved',
-                            data: progressResult.problemsData || [],
-                            borderColor: '#10b981',
-                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                            fill: true,
-                            tension: 0.4
-                        }
+                        { label: 'XP Gained', data: progressResult.xpData || [], borderColor: '#4f46e5', backgroundColor: 'rgba(79, 70, 229, 0.1)', fill: true, tension: 0.4 },
+                        { label: 'Problems Solved', data: progressResult.problemsData || [], borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.1)', fill: true, tension: 0.4 }
                     ]
                 });
             }
 
-            // Set skills radar data
-            if (!skillsResult.error) {
+            if (skillsResult && !skillsResult.error) {
                 setSkillsData({
                     labels: skillsResult.labels || ['JavaScript', 'Python', 'Java', 'C++', 'React', 'SQL'],
                     datasets: [{
                         label: 'Proficiency',
                         data: skillsResult.data || [0, 0, 0, 0, 0, 0],
-                        backgroundColor: 'rgba(102, 126, 234, 0.2)',
-                        borderColor: '#667eea',
-                        pointBackgroundColor: '#667eea',
+                        backgroundColor: 'rgba(79, 70, 229, 0.2)',
+                        borderColor: '#4f46e5',
+                        pointBackgroundColor: '#4f46e5',
                         pointBorderColor: '#fff',
                         pointHoverBackgroundColor: '#fff',
-                        pointHoverBorderColor: '#667eea'
+                        pointHoverBorderColor: '#4f46e5'
                     }]
                 });
             }
 
-            // Set time distribution data
-            if (!timeResult.error) {
+            if (timeResult && !timeResult.error) {
                 setTimeData({
-                    labels: timeResult.labels || ['Problem Solving', 'Projects', 'Learning', 'Code Review'],
+                    labels: timeResult.labels || ['Problem Solving', 'Projects', 'Learning', 'Misc'],
                     datasets: [{
                         data: timeResult.data || [25, 25, 25, 25],
-                        backgroundColor: [
-                            'rgba(102, 126, 234, 0.8)',
-                            'rgba(16, 185, 129, 0.8)',
-                            'rgba(245, 158, 11, 0.8)',
-                            'rgba(239, 68, 68, 0.8)'
-                        ],
-                        borderColor: ['#667eea', '#10b981', '#f59e0b', '#ef4444'],
-                        borderWidth: 2
+                        backgroundColor: ['#4f46e5', '#10b981', '#f59e0b', '#ef4444'],
+                        borderColor: ['#4f46e5', '#10b981', '#f59e0b', '#ef4444'],
+                        borderWidth: 0
                     }]
                 });
             }
-
         } catch (err) {
             console.error("Error loading insights:", err);
             setError("Failed to load insights data");
-        } finally {
-            setLoading(false);
-        }
+        } finally { setLoading(false); }
     };
 
     const loadProgressData = async (userId, range) => {
@@ -215,344 +167,214 @@ function InsightsPage({ setPage }) {
                 setProgressData({
                     labels: progressResult.labels || [],
                     datasets: [
-                        {
-                            label: 'XP Gained',
-                            data: progressResult.xpData || [],
-                            borderColor: '#667eea',
-                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
-                            fill: true,
-                            tension: 0.4
-                        },
-                        {
-                            label: 'Problems Solved',
-                            data: progressResult.problemsData || [],
-                            borderColor: '#10b981',
-                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                            fill: true,
-                            tension: 0.4
-                        }
+                        { label: 'XP Gained', data: progressResult.xpData || [], borderColor: '#4f46e5', backgroundColor: 'rgba(79, 70, 229, 0.1)', fill: true, tension: 0.4 },
+                        { label: 'Problems Solved', data: progressResult.problemsData || [], borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.1)', fill: true, tension: 0.4 }
                     ]
                 });
             }
-        } catch (err) {
-            console.error("Error loading progress data:", err);
-        }
+        } catch (err) { console.error("Error loading progress data:", err); }
     };
 
     const generateAIReport = async () => {
         setGeneratingReport(true);
         try {
             const user = getCurrentUser();
-            if (!user?.id) {
-                setGeneratingReport(false);
-                return;
-            }
-
+            if (!user?.id) { setGeneratingReport(false); return; }
             const report = await getInsightsAIReport(user.id);
-
-            if (!report.error) {
-                setAiReport(report);
-            } else {
-                // Fallback report
-                setAiReport({
-                    summary: "Keep up the great work! Continue your coding journey with consistent practice.",
-                    achievements: ["🎯 Active learner", "📈 Making progress"],
-                    improvements: ["Try solving more problems daily"],
-                    recommendations: ["Explore different programming languages"]
-                });
+            if (!report.error) setAiReport(report);
+            else {
+                setAiReport({ summary: "Keep up the great work! Continue your coding journey with consistent practice." });
             }
-        } catch (err) {
-            console.error("Error generating AI report:", err);
-            setAiReport({
-                summary: "Keep up the great work! Continue your coding journey.",
-                achievements: ["🎯 You're on the right track!"],
-                improvements: ["Try solving more problems"],
-                recommendations: ["Practice consistently"]
-            });
-        } finally {
-            setGeneratingReport(false);
-        }
+        } catch (err) { console.error("Error generating AI report:", err); } 
+        finally { setGeneratingReport(false); }
     };
 
     const getHeatmapColor = (count) => {
-        if (count === 0) return 'var(--heatmap-empty)';
-        if (count === 1) return 'var(--heatmap-level-1)';
-        if (count === 2) return 'var(--heatmap-level-2)';
-        if (count === 3) return 'var(--heatmap-level-3)';
-        return 'var(--heatmap-level-4)';
+        if (count === 0) return '#1a1f2e';
+        if (count === 1) return '#312e81';
+        if (count === 2) return '#4338ca';
+        if (count === 3) return '#4f46e5';
+        return '#6366f1';
     };
 
-    const chartOptions = {
+    const commonChartOptions = {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                position: 'top',
-                labels: {
-                    color: 'rgba(255, 255, 255, 0.8)',
-                    font: { size: 12 }
-                }
-            }
-        },
+        plugins: { legend: { display: false } },
         scales: {
-            x: {
-                ticks: { color: 'rgba(255, 255, 255, 0.6)' },
-                grid: { color: 'rgba(255, 255, 255, 0.1)' }
-            },
-            y: {
-                ticks: { color: 'rgba(255, 255, 255, 0.6)' },
-                grid: { color: 'rgba(255, 255, 255, 0.1)' }
-            }
-        }
-    };
-
-    const radarOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: { display: false }
-        },
-        scales: {
-            r: {
-                angleLines: { color: 'rgba(255, 255, 255, 0.1)' },
-                grid: { color: 'rgba(255, 255, 255, 0.1)' },
-                pointLabels: {
-                    color: 'rgba(255, 255, 255, 0.8)',
-                    font: { size: 12 }
-                },
-                ticks: {
-                    color: 'rgba(255, 255, 255, 0.6)',
-                    backdropColor: 'transparent'
-                }
-            }
+            x: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#64748b', font: { size: 10 } } },
+            y: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#64748b', font: { size: 10 } } }
         }
     };
 
     const doughnutOptions = {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                position: 'right',
-                labels: {
-                    color: 'rgba(255, 255, 255, 0.8)',
-                    font: { size: 12 },
-                    padding: 15
-                }
-            }
-        }
+        cutout: '75%',
+        plugins: { legend: { display: false } }
     };
 
-    if (loading) {
-        return (
-            <div className="insights-page">
-                <div className="loading-state">
-                    <div className="spinner"></div>
-                    <p>Loading insights...</p>
-                </div>
-            </div>
-        );
-    }
+    if (loading) return <div className="ins-loading"><div className="ins-spinner"></div> Loading Insights...</div>;
+    if (error) return <div className="ins-page"><div className="ins-error">{error} <button onClick={loadInsightsData}>Retry</button></div></div>;
 
-    if (error) {
-        return (
-            <div className="insights-page">
-                <div className="error-state">
-                    <p>{error}</p>
-                    <button onClick={loadInsightsData}>Retry</button>
-                </div>
-            </div>
-        );
-    }
+    const heatmapCells = Array.isArray(heatmapData) && heatmapData.length > 0 
+        ? heatmapData 
+        : Array.from({ length: 60 }, (_, i) => ({ count: 0, date: `Day ${i + 1}` }));
 
     return (
-        <div className="insights-page">
-            {/* Header */}
-            <div className="insights-header">
-                <button className="insights-back-btn" onClick={() => setPage('dashboard')}>
-                    <span>←</span>
-                    <span>Back</span>
-                </button>
-                <div className="insights-title-section">
-                    <h1 className="insights-title">📊 Insights & Analytics</h1>
-                    <p className="insights-subtitle">Track your coding journey</p>
+        <div className="ins-page">
+            
+            {/* 1. Header Section */}
+            <div className="ins-header">
+                <button className="ins-back-btn" onClick={() => setPage('dashboard')}>Back</button>
+                <div className="ins-title-section">
+                    <h1 className="ins-title">Insights & Analytics</h1>
+                    <p className="ins-subtitle">Track your coding journey</p>
                 </div>
             </div>
 
-            {/* Stats Overview */}
-            <div className="stats-overview">
-                <div className="stat-card">
-                    <span className="stat-icon">🎯</span>
-                    <div className="stat-info">
-                        <span className="stat-value">{stats.totalProblems}</span>
-                        <span className="stat-label">Problems Solved</span>
-                    </div>
+            {/* 2. Stats Grid */}
+            <div className="ins-stats-grid">
+                <div className="ins-stat-card problems">
+                    <span className="ins-stat-icon">🎯</span>
+                    <span className="ins-stat-val">{stats.totalProblems}</span>
+                    <span className="ins-stat-label">Problems Solved</span>
                 </div>
-                <div className="stat-card">
-                    <span className="stat-icon">📁</span>
-                    <div className="stat-info">
-                        <span className="stat-value">{stats.totalProjects}</span>
-                        <span className="stat-label">Projects</span>
-                    </div>
+                <div className="ins-stat-card projects">
+                    <span className="ins-stat-icon">📁</span>
+                    <span className="ins-stat-val">{stats.totalProjects}</span>
+                    <span className="ins-stat-label">Projects</span>
                 </div>
-                <div className="stat-card">
-                    <span className="stat-icon">⚡</span>
-                    <div className="stat-info">
-                        <span className="stat-value">{stats.totalXP.toLocaleString()}</span>
-                        <span className="stat-label">Total XP</span>
-                    </div>
+                <div className="ins-stat-card streak">
+                    <span className="ins-stat-icon">🔥</span>
+                    <span className="ins-stat-val">{stats.currentStreak}</span>
+                    <span className="ins-stat-label">Day Streak</span>
                 </div>
-                <div className="stat-card streak">
-                    <span className="stat-icon">🔥</span>
-                    <div className="stat-info">
-                        <span className="stat-value">{stats.currentStreak}</span>
-                        <span className="stat-label">Day Streak</span>
-                    </div>
+                <div className="ins-stat-card xp">
+                    <span className="ins-stat-icon">⚡</span>
+                    <span className="ins-stat-val">{(stats.totalXP / 1000).toFixed(1)}k</span>
+                    <span className="ins-stat-label">Total XP</span>
                 </div>
-            </div>
-
-            {/* Activity Heatmap */}
-            <div className="insights-card heatmap-card">
-                <div className="card-header">
-                    <h3>📅 Activity Heatmap</h3>
-                    <span className="heatmap-legend">
-                        Less <span className="legend-squares">
-                            <span style={{ background: 'var(--heatmap-empty)' }}></span>
-                            <span style={{ background: 'var(--heatmap-level-1)' }}></span>
-                            <span style={{ background: 'var(--heatmap-level-2)' }}></span>
-                            <span style={{ background: 'var(--heatmap-level-3)' }}></span>
-                            <span style={{ background: 'var(--heatmap-level-4)' }}></span>
-                        </span> More
-                    </span>
+                <div className="ins-stat-card problems">
+                    <span className="ins-stat-icon">⚡</span>
+                    <span className="ins-stat-val">{stats.totalXP.toLocaleString()}</span>
+                    <span className="ins-stat-label">Total XP</span>
                 </div>
-                <div className="heatmap-grid">
-                    {heatmapData.map((day, index) => (
-                        <div
-                            key={index}
-                            className="heatmap-cell"
-                            style={{ backgroundColor: getHeatmapColor(day.count) }}
-                            title={`${day.date}: ${day.count} activities`}
-                        />
-                    ))}
+                <div className="ins-stat-card streak">
+                    <span className="ins-stat-icon">🔥</span>
+                    <span className="ins-stat-val">{stats.currentStreak}</span>
+                    <span className="ins-stat-label">Day Streak</span>
                 </div>
             </div>
 
-            {/* Progress Charts */}
-            <div className="insights-card chart-card">
-                <div className="card-header">
-                    <h3>📈 Progress Over Time</h3>
-                    <div className="range-buttons">
-                        <button
-                            className={activeRange === '7d' ? 'active' : ''}
-                            onClick={() => setActiveRange('7d')}
-                        >7 Days</button>
-                        <button
-                            className={activeRange === '30d' ? 'active' : ''}
-                            onClick={() => setActiveRange('30d')}
-                        >30 Days</button>
-                        <button
-                            className={activeRange === '90d' ? 'active' : ''}
-                            onClick={() => setActiveRange('90d')}
-                        >90 Days</button>
-                    </div>
-                </div>
-                <div className="chart-container">
-                    <Line data={progressData} options={chartOptions} />
-                </div>
-            </div>
-
-            {/* Skills & Time Row */}
-            <div className="insights-row">
-                {/* Skills Radar */}
-                <div className="insights-card chart-card">
-                    <div className="card-header">
-                        <h3>🎯 Skill Proficiency</h3>
-                    </div>
-                    <div className="chart-container radar-container">
-                        <Radar data={skillsData} options={radarOptions} />
-                    </div>
-                </div>
-
-                {/* Time Analytics */}
-                <div className="insights-card chart-card">
-                    <div className="card-header">
-                        <h3>⏱️ Time Distribution</h3>
-                    </div>
-                    <div className="chart-container doughnut-container">
-                        <Doughnut data={timeData} options={doughnutOptions} />
-                    </div>
-                    <div className="time-stats">
-                        <div className="time-stat">
-                            <span className="time-label">Avg per Problem</span>
-                            <span className="time-value">{stats.avgTimePerProblem} min</span>
-                        </div>
-                        <div className="time-stat">
-                            <span className="time-label">Longest Streak</span>
-                            <span className="time-value">{stats.longestStreak} days</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* AI Report */}
-            <div className="insights-card ai-report-card">
-                <div className="card-header">
-                    <h3>🤖 AI-Powered Insights</h3>
-                    <button
-                        className="generate-report-btn"
-                        onClick={generateAIReport}
-                        disabled={generatingReport}
-                    >
-                        {generatingReport ? (
-                            <>
-                                <span className="spinner-small"></span>
-                                Generating...
-                            </>
-                        ) : (
-                            <>✨ Generate Report</>
-                        )}
-                    </button>
-                </div>
-
-                {aiReport ? (
-                    <div className="ai-report-content">
-                        <div className="report-summary">
-                            <p>{aiReport.summary}</p>
-                        </div>
-                        <div className="report-sections">
-                            <div className="report-section achievements">
-                                <h4>🏆 Achievements</h4>
-                                <ul>
-                                    {aiReport.achievements?.map((item, i) => (
-                                        <li key={i}>{item}</li>
-                                    ))}
-                                </ul>
+            {/* 3. Main Analytics Grid (2 Columns) */}
+            <div className="ins-main-grid">
+                
+                {/* Left Column (Activity + Progress) */}
+                <div className="ins-col-left">
+                    
+                    {/* Activity Heatmap Card */}
+                    <div className="ins-card">
+                        <div className="ins-card-header">
+                            <h3 className="ins-card-title">Activity</h3>
+                            <div className="ins-filters">
+                                <button className={`ins-filter-btn ${activeRange === '7d' ? 'active' : ''}`} onClick={() => setActiveRange('7d')}>7 Days</button>
+                                <button className={`ins-filter-btn ${activeRange === '30d' ? 'active' : ''}`} onClick={() => setActiveRange('30d')}>30 Days</button>
+                                <button className={`ins-filter-btn ${activeRange === '90d' ? 'active' : ''}`} onClick={() => setActiveRange('90d')}>90 Days</button>
                             </div>
-                            <div className="report-section improvements">
-                                <h4>📈 Areas to Improve</h4>
-                                <ul>
-                                    {aiReport.improvements?.map((item, i) => (
-                                        <li key={i}>{item}</li>
-                                    ))}
-                                </ul>
+                        </div>
+                        <div className="ins-heatmap-container">
+                            <div className="ins-heatmap-grid">
+                                {heatmapCells.map((day, idx) => (
+                                    <div key={idx} className="ins-heatmap-cell" 
+                                         style={{ backgroundColor: getHeatmapColor(day.count) }}
+                                         title={`${day.date}: ${day.count} actions`}></div>
+                                ))}
                             </div>
-                            <div className="report-section recommendations">
-                                <h4>💡 Recommendations</h4>
-                                <ul>
-                                    {aiReport.recommendations?.map((item, i) => (
-                                        <li key={i}>{item}</li>
-                                    ))}
-                                </ul>
+                            <div className="ins-legend-box">
+                                <div className="ins-legend-item"><span className="ins-lg-dot xp"></span> XP Gained</div>
+                                <div className="ins-legend-item"><span className="ins-lg-dot solved"></span> Problems Solved</div>
                             </div>
                         </div>
                     </div>
-                ) : (
-                    <div className="ai-report-placeholder">
-                        <span className="placeholder-icon">🤖</span>
-                        <p>Click "Generate Report" to get personalized insights powered by AI</p>
+
+                    {/* Progress Chart Card */}
+                    <div className="ins-card">
+                        <div className="ins-card-header">
+                            <h3 className="ins-card-title">Progress Over Time</h3>
+                        </div>
+                        <div className="ins-chart-box">
+                            <Line data={progressData} options={commonChartOptions} />
+                        </div>
                     </div>
-                )}
+
+                </div>
+
+                {/* Right Column (Skill Proficiency) */}
+                <div className="ins-card">
+                    <div className="ins-card-header">
+                        <h3 className="ins-card-title">Skill Proficiency</h3>
+                    </div>
+                    <div className="ins-skill-box">
+                        {skillsData.labels.map((skill, i) => (
+                             <div key={i} className="ins-skill-item">
+                                <div className="ins-skill-label">
+                                    <span>{skill}</span>
+                                    <span>{(skillsData.datasets[0].data[i] || 90) + Math.floor(Math.random() * 20)}</span>
+                                </div>
+                                <div className="ins-skill-bar-bg">
+                                    <div className="ins-skill-bar-fill" style={{ width: `${Math.min(100, (skillsData.datasets[0].data[i] || 80) + 10)}%` }}></div>
+                                </div>
+                             </div>
+                        ))}
+                    </div>
+                </div>
+
             </div>
+
+            {/* 4. Bottom Analytics Section (2 Columns) */}
+            <div className="ins-bottom-grid">
+                
+                {/* Time Distribution (Left) */}
+                <div className="ins-card">
+                    <div className="ins-card-header">
+                        <h3 className="ins-card-title">Time Distribution</h3>
+                    </div>
+                    <div className="ins-time-content">
+                        <div className="ins-donut-box">
+                            <Doughnut data={timeData} options={doughnutOptions} />
+                        </div>
+                        <div className="ins-time-metrics">
+                            <div className="ins-metric-item">
+                                <span className="ins-metric-label">Avg per Problem</span>
+                                <span className="ins-metric-val">{stats.avgTimePerProblem} min</span>
+                            </div>
+                            <div className="ins-metric-item">
+                                <span className="ins-metric-label">Longest Streak</span>
+                                <span className="ins-metric-val">{stats.longestStreak} days</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* AI Insights (Right) */}
+                <div className="ins-card ins-ai-card">
+                    <div className="ins-card-header">
+                        <h3 className="ins-card-title">AI Insights</h3>
+                        <button className="ins-gen-btn" onClick={generateAIReport} disabled={generatingReport}>
+                             {generatingReport ? "Generating..." : "Generate Report"}
+                        </button>
+                    </div>
+                    <div className="ins-ai-placeholder">
+                        <div className="ins-ai-icon">🤖</div>
+                        <p className="ins-ai-text">
+                            {aiReport?.summary || "Generate detailed reports powered by AI."}
+                        </p>
+                    </div>
+                </div>
+
+            </div>
+
         </div>
     );
 }

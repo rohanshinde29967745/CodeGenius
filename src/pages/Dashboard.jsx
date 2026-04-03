@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { getUserStats, getUserActivity, getCurrentUser, getContestBadges } from "../services/api";
-import "../App.css";
+import "./Dashboard.css"; // Use the newly created module
 
 function Dashboard({ setPage }) {
   const [stats, setStats] = useState({
@@ -16,6 +16,8 @@ function Dashboard({ setPage }) {
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
   const [contestBadges, setContestBadges] = useState([]);
+  const [dailyProblem, setDailyProblem] = useState(null);
+  const [isDailySolved, setIsDailySolved] = useState(false);
 
   // Extract fetchData so it can be called from multiple places
   const fetchData = async () => {
@@ -29,9 +31,7 @@ function Dashboard({ setPage }) {
 
     try {
       // Fetch user stats
-      console.log("📊 Fetching stats for user ID:", currentUser.id);
       const statsData = await getUserStats(currentUser.id);
-      console.log("📊 Stats received:", statsData.stats);
       if (statsData.stats) {
         setStats(statsData.stats);
       }
@@ -40,6 +40,18 @@ function Dashboard({ setPage }) {
       const activityData = await getUserActivity(currentUser.id, 5);
       if (activityData.activities) {
         setActivities(activityData.activities);
+      }
+
+      // Fetch daily problem
+      const dailyRes = await fetch("http://localhost:4000/api/problem-generate/daily");
+      const dailyData = await dailyRes.json();
+      if (dailyData && dailyData.title) {
+        setDailyProblem(dailyData);
+        // Check if solved today
+        const solvedToday = activityData.activities?.some(a => 
+          a.type === "problem_solved" && a.description.includes(dailyData.title)
+        );
+        setIsDailySolved(!!solvedToday);
       }
 
       // Fetch contest badges
@@ -59,14 +71,11 @@ function Dashboard({ setPage }) {
     fetchData();
   }, [refreshKey]);
 
-  // Refetch data when component mounts (user navigates to dashboard)
-  // This runs every time the Dashboard component appears on screen
   useEffect(() => {
     // Trigger a fresh fetch every time Dashboard is rendered
     setRefreshKey(prev => prev + 1);
-  }, []); // Empty array means this runs on mount
+  }, []);
 
-  // Also refetch when page becomes visible (user switches browser tabs)
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden) {
@@ -74,15 +83,12 @@ function Dashboard({ setPage }) {
       }
     };
 
-    // Also listen for window focus (when clicking back into the window)
     const handleFocus = () => {
       setRefreshKey(prev => prev + 1);
     };
 
-    // Listen for stats update events from problem solving
     const handleStatsUpdated = (event) => {
       console.log("📊 Stats updated event received:", event.detail);
-      // Small delay to ensure database has committed the changes
       setTimeout(() => {
         setRefreshKey(prev => prev + 1);
       }, 500);
@@ -109,253 +115,337 @@ function Dashboard({ setPage }) {
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
 
-    if (diffMins < 60) return `${diffMins} minutes ago`;
-    if (diffHours < 24) return `${diffHours} hours ago`;
+    if (diffMins < 60) return `${diffMins || 1} min ago`;
+    if (diffHours < 24) return `Today`;
+    if (diffDays === 1) return `1 day ago`;
     return `${diffDays} days ago`;
   };
 
-  // Get activity icon and color
+  // Get activity icon/color mapped to new styles
   const getActivityStyle = (type) => {
     const styles = {
-      login: { icon: "🔵", color: "blue" },
-      registration: { icon: "🟢", color: "green" },
-      problem_solved: { icon: "✅", color: "green" },
+      login: { icon: "👤", color: "blue" },
+      registration: { icon: "🎉", color: "purple" },
+      problem_solved: { icon: "✅", color: "success" },
       problem_attempted: { icon: "🔄", color: "blue" },
-      code_analyzed: { icon: "🔵", color: "blue" },
-      code_converted: { icon: "🟣", color: "purple" },
+      code_analyzed: { icon: "🧠", color: "blue" },
+      code_converted: { icon: "🔁", color: "purple" },
       project_uploaded: { icon: "📦", color: "purple" },
-      badge_earned: { icon: "🏅", color: "gold" },
-      level_up: { icon: "⭐", color: "gold" },
+      badge_earned: { icon: "🎖️", color: "success" },
+      level_up: { icon: "⭐", color: "purple" },
     };
-    return styles[type] || { icon: "◉", color: "blue" };
+    return styles[type] || { icon: "⚡", color: "blue" };
   };
 
   if (loading) {
     return (
-      <div className="db-page problem-solving-page">
-        <div className="db-loading">
-          <span className="loading-icon">⏳</span>
-          <p>Loading dashboard...</p>
-        </div>
+      <div className="dev-dashboard" style={{ justifyContent: 'center', alignItems: 'center' }}>
+        <p style={{ color: '#94a3b8' }}>Loading command center...</p>
       </div>
     );
   }
 
+  const initial = user.fullName ? user.fullName.charAt(0).toUpperCase() : "U";
+
   return (
-    <div className="db-page problem-solving-page">
-      {/* HEADER */}
-      <div className="ps-header">
-        <div className="ps-header-left">
-          <h1 className="ps-page-title">Welcome back, {user.fullName?.split(" ")[0] || "User"}! 👋</h1>
-          <p className="ps-page-subtitle">Here's what's happening with your coding journey today.</p>
+    <div className="dev-dashboard">
+      
+      {/* 1. TOP CONTROL HEADER */}
+      <div className="dash-header-section">
+        
+        <div className="dash-header-left">
+          <div className="dash-avatar">
+            {initial}
+            <div className="dash-avatar-status"></div>
+          </div>
+          <div className="dash-user-info">
+            <h2 className="dash-user-name">{user.fullName || "Developer User"}</h2>
+            <div className="dash-level-row">
+              <span className="dash-level-badge">{stats.currentLevel}</span>
+              <span>•</span>
+              <span>{Math.floor(stats.currentXp)} / {Math.floor(stats.xpToNextLevel)} XP</span>
+              <div className="dash-xp-bar-container">
+                <div 
+                  className="dash-xp-bar-fill" 
+                  style={{ width: `${Math.min(100, (stats.currentXp / Math.max(1, stats.xpToNextLevel)) * 100)}%` }}
+                ></div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="ps-header-actions">
-          <button
-            className="ps-generate-btn"
-            onClick={() => {
-              setLoading(true);
-              fetchData();
-            }}
-            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-          >
-            <span>🔄</span> Refresh Stats
+
+        <div className="dash-header-center">
+          <div className="dash-hc-stat">
+            <span className="dash-hc-icon">🔥</span>
+            <div className="dash-hc-text">
+              <span className="dash-hc-val">1</span>
+              <span className="dash-hc-lbl">Day Streak</span>
+            </div>
+          </div>
+          <div className="dash-hc-stat">
+            <span className="dash-hc-icon" style={{color: '#34d399'}}>✔️</span>
+            <div className="dash-hc-text">
+              <span className="dash-hc-val">{stats.accuracy}%</span>
+              <span className="dash-hc-lbl">Accuracy</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="dash-header-right">
+          <button className="dash-btn" onClick={() => setPage("analyzer")}>
+            <span style={{color: '#8b5cf6'}}>&lt;&gt;</span> Analyze
+          </button>
+          <button className="dash-btn" onClick={() => setPage("converter")}>
+            <span style={{color: '#3b82f6'}}>⟲</span> Convert
+          </button>
+          <button className="dash-btn" onClick={() => { setLoading(true); fetchData(); }}>
+            <span style={{color: '#94a3b8'}}>🔄</span> Refresh
           </button>
         </div>
       </div>
 
-      {/* STATS GRID */}
-      <div className="db-stats-grid">
-        <div className="db-stat-card">
-          <div className="db-stat-header">
-            <span className="db-stat-icon blue">🎯</span>
-            <span className="db-stat-label">Problems Solved</span>
-          </div>
-          <div className="db-stat-value">{stats.problemsSolved}</div>
-          <div className="db-stat-desc">Keep solving!</div>
-        </div>
+      {/* 2. MAIN GRID */}
+      <div className="dash-main-grid">
+        
+        {/* LEFT COLUMN */}
+        <div className="dash-col-left">
 
-        <div className="db-stat-card">
-          <div className="db-stat-header">
-            <span className="db-stat-icon green">📈</span>
-            <span className="db-stat-label">Total Points</span>
-          </div>
-          <div className="db-stat-value">{stats.totalPoints.toLocaleString()}</div>
-          <div className="db-stat-desc">Great progress!</div>
-        </div>
-
-        <div className="db-stat-card">
-          <div className="db-stat-header">
-            <span className="db-stat-icon purple">✓</span>
-            <span className="db-stat-label">Accuracy</span>
-          </div>
-          <div className="db-stat-value">{stats.accuracy}%</div>
-          <div className="db-stat-desc">Keep it up!</div>
-        </div>
-
-        <div className="db-stat-card">
-          <div className="db-stat-header">
-            <span className="db-stat-icon gold">👤</span>
-            <span className="db-stat-label">Current Level</span>
-          </div>
-          <div className="db-stat-value">{stats.currentLevel}</div>
-          <div className="db-progress-bar">
-            <div
-              className="db-progress-fill"
-              style={{ width: `${stats.xpProgress || Math.min(100, (stats.currentXp / (stats.xpToNextLevel || 1000)) * 100)}%` }}
-            ></div>
-          </div>
-          <div className="db-stat-desc">{stats.currentXp || 0}/{stats.xpToNextLevel || 1000} XP to next level</div>
-        </div>
-      </div>
-
-      {/* TWO COLUMN LAYOUT */}
-      <div className="db-main-grid">
-        {/* LEFT - Quick Actions */}
-        <div className="db-panel">
-          <div className="db-panel-header">
-            <span className="db-panel-icon">⚡</span>
-            <div>
-              <h3 className="db-panel-title">Quick Actions</h3>
-              <p className="db-panel-subtitle">Jump into your favorite activities</p>
+          {/* Today's Focus */}
+          <div className="dash-panel dash-focus-card">
+            <div className="dash-panel-header">
+              <h3 className="dash-panel-title">🎯 Today's Focus</h3>
+              <p className="dash-panel-subtitle">Resume your last problem and maintain your streak.</p>
             </div>
-          </div>
-          <div className="db-panel-content">
-            <div className="db-action-card" onClick={() => setPage("analyzer")}>
-              <div className="db-action-icon blue">&lt;&gt;</div>
-              <div className="db-action-info">
-                <h4>Analyze Code</h4>
-                <p>Get AI-powered insights</p>
+            
+            <div className="dash-focus-main">
+              <div className="dash-fm-left">
+                <h4>{dailyProblem?.title || "Daily Coding Challenge"}</h4>
+                <p>
+                  {isDailySolved ? "✅ Task Completed for today" : "Last solved 1 day ago"} 
+                  <span className="dash-fm-tag">• {dailyProblem?.category || "Logic"}</span>
+                </p>
               </div>
-              <span className="db-action-arrow">→</span>
+              <button 
+                className={`dash-btn-primary ${isDailySolved ? 'solved-btn' : ''}`}
+                onClick={() => setPage({ name: "problemSolving", problem: dailyProblem })}
+                disabled={isDailySolved}
+              >
+                {isDailySolved ? "Problem Solved" : "▶ Continue Solving"}
+              </button>
             </div>
 
-            <div className="db-action-card" onClick={() => setPage("problemSolving")}>
-              <div className="db-action-icon green">◉</div>
-              <div className="db-action-info">
-                <h4>Solve Problems</h4>
-                <p>Practice coding challenges</p>
-              </div>
-              <span className="db-action-arrow">→</span>
-            </div>
-
-            <div className="db-action-card" onClick={() => setPage("converter")}>
-              <div className="db-action-icon purple">⟲</div>
-              <div className="db-action-info">
-                <h4>Convert Code</h4>
-                <p>Transform between languages</p>
-              </div>
-              <span className="db-action-arrow">→</span>
-            </div>
-
-            <div className="db-action-card" onClick={() => setPage("leaderboard")}>
-              <div className="db-action-icon gold">🏅</div>
-              <div className="db-action-info">
-                <h4>View Leaderboard</h4>
-                <p>See your ranking</p>
-              </div>
-              <span className="db-action-arrow">→</span>
+            <div className="dash-suggested-row">
+              <span style={{color: '#94a3b8'}}>Difficulty:</span>
+              <button className="dash-suggest-btn">
+                <div className={`dash-dot ${dailyProblem?.difficulty === 'Easy' ? 'green' : 'yellow'}`}></div> 
+                {dailyProblem?.difficulty || "Medium"}
+              </button>
             </div>
           </div>
-        </div>
 
-        {/* RIGHT - Recent Activity */}
-        <div className="db-panel">
-          <div className="db-panel-header">
-            <span className="db-panel-icon">📊</span>
-            <div>
-              <h3 className="db-panel-title">Recent Activity</h3>
-              <p className="db-panel-subtitle">Your latest coding activities</p>
+          {/* Recent Activity */}
+          <div className="dash-panel" style={{ flex: 1 }}>
+            <div className="dash-panel-header">
+              <h3 className="dash-panel-title">📈 Recent Activity</h3>
+              <br/>
             </div>
-          </div>
-          <div className="db-panel-content">
-            {activities.length > 0 ? (
-              activities.map((activity) => {
-                const style = getActivityStyle(activity.type);
-                return (
-                  <div className="db-activity-item" key={activity.id}>
-                    <span className={`db-activity-dot ${style.color}`}>{style.icon}</span>
-                    <div className="db-activity-content">
-                      <strong>{activity.type.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase())}</strong>
-                      <span>{activity.description}</span>
-                      <small>⏱ {formatTimeAgo(activity.time)}</small>
+            
+            <div className="dash-timeline">
+              {activities.length > 0 ? (
+                activities.map((activity, idx) => {
+                  const style = getActivityStyle(activity.type);
+                  return (
+                    <div className="dash-timeline-item" key={activity.id || idx}>
+                      <div className={`dash-t-icon ${style.color}`}>{style.icon}</div>
+                      <div className="dash-t-content">
+                        <h4 className="dash-t-title">
+                          {activity.description}
+                          {activity.type === "problem_solved" && <span className="dash-t-xp">+20 XP</span>}
+                          {activity.type === "code_analyzed" && <span className="dash-t-xp">+15 XP</span>}
+                        </h4>
+                        <span className="dash-t-meta">
+                          {formatTimeAgo(activity.time)} 
+                          {activity.type === "problem_solved" && <span className="dash-t-highlight">Easy</span>}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                /* Fallback Mock Timeline if empty */
+                <>
+                  <div className="dash-timeline-item">
+                    <div className="dash-t-icon success">✅</div>
+                    <div className="dash-t-content">
+                      <h4 className="dash-t-title">Solved Reverse a Linked List <span className="dash-t-xp">+20 XP</span></h4>
+                      <span className="dash-t-meta">Today <span className="dash-t-highlight">Easy</span></span>
                     </div>
                   </div>
-                );
-              })
-            ) : (
-              <div className="db-activity-item">
-                <span className="db-activity-dot blue">◉</span>
-                <div className="db-activity-content">
-                  <strong>Welcome to CodeGenius!</strong>
-                  <span>Start solving problems to see your activity here</span>
+                  <div className="dash-timeline-item">
+                    <div className="dash-t-icon purple">🏆</div>
+                    <div className="dash-t-content">
+                      <h4 className="dash-t-title">Joined Weekly Contest #450</h4>
+                      <span className="dash-t-meta">2 days ago <span className="dash-t-highlight" style={{background: 'rgba(56, 189, 248, 0.1)', color: '#38bdf8'}}>Rank #128</span></span>
+                    </div>
+                  </div>
+                  <div className="dash-timeline-item">
+                    <div className="dash-t-icon blue">🧠</div>
+                    <div className="dash-t-content">
+                      <h4 className="dash-t-title">Analyzed 3 solutions with AI <span className="dash-t-xp">+15 XP</span></h4>
+                      <span className="dash-t-meta">2 days ago</span>
+                    </div>
+                  </div>
+                  <div className="dash-timeline-item">
+                    <div className="dash-t-icon blue">👤</div>
+                    <div className="dash-t-content">
+                      <h4 className="dash-t-title">Logged in</h4>
+                      <span className="dash-t-meta">3 days ago</span>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT COLUMN */}
+        <div className="dash-col-right">
+
+          {/* Performance Panel */}
+          <div className="dash-panel">
+            <h3 className="dash-panel-title" style={{marginBottom: '24px'}}>📈 Your Performance</h3>
+            
+            <div className="dash-perf-row">
+              <div className="dash-perf-top">
+                <div className="dash-perf-icon-row">
+                  <div className="dash-perf-icon bg-blue">🎯</div>
+                  <span>Problems Solved</span>
+                </div>
+                <span className="dash-perf-val">{stats.problemsSolved} / 50</span>
+              </div>
+              <div className="dash-perf-bar-bg">
+                <div className="dash-perf-fill blue" style={{width: `${Math.min(100, (stats.problemsSolved / 50) * 100)}%`}}></div>
+              </div>
+            </div>
+
+            <div className="dash-perf-row">
+              <div className="dash-perf-top">
+                <div className="dash-perf-icon-row">
+                  <div className="dash-perf-icon bg-purple">✔️</div>
+                  <span>Accuracy</span>
+                </div>
+                <span className="dash-perf-val">{stats.accuracy}%</span>
+              </div>
+              <div className="dash-perf-bar-bg">
+                <div className="dash-perf-fill purple" style={{width: `${stats.accuracy}%`}}></div>
+              </div>
+            </div>
+
+            <div className="dash-perf-row">
+              <div className="dash-perf-top">
+                <div className="dash-perf-icon-row">
+                  <div className="dash-perf-icon bg-green">📈</div>
+                  <span>XP Growth</span>
+                </div>
+                <span className="dash-perf-val">+{Math.floor(stats.currentXp)} XP</span>
+              </div>
+              <div className="dash-perf-bar-bg">
+                <div className="dash-perf-fill green" style={{width: '65%'}}></div>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Actions Component */}
+          <div className="dash-panel">
+            <h3 className="dash-panel-title" style={{marginBottom: '20px'}}>⚡ Quick Actions</h3>
+            
+            <div className="dash-qa-grid">
+              
+              <div className="dash-qa-card" onClick={() => setPage("problemSolving")}>
+                <div className="dash-qa-icon cyan">🎯</div>
+                <div className="dash-qa-text">
+                  <h4>Solve Problems</h4>
+                  <p>Practice coding</p>
+                </div>
+                <span className="dash-qa-arrow">→</span>
+              </div>
+
+              <div className="dash-qa-card" onClick={() => setPage("analyzer")}>
+                <div className="dash-qa-icon purple">&lt;&gt;</div>
+                <div className="dash-qa-text">
+                  <h4>Analyze Code</h4>
+                  <p>Get AI insights</p>
+                </div>
+                <span className="dash-qa-arrow">→</span>
+              </div>
+
+              <div className="dash-qa-card" onClick={() => setPage("converter")}>
+                <div className="dash-qa-icon blue">⟲</div>
+                <div className="dash-qa-text">
+                  <h4>Convert Code</h4>
+                  <p>Between languages</p>
+                </div>
+                <span className="dash-qa-arrow">→</span>
+              </div>
+
+              <div className="dash-qa-card" onClick={() => setPage("contests")}>
+                <div className="dash-qa-icon yellow">🏆</div>
+                <div className="dash-qa-text">
+                  <h4>Contests</h4>
+                  <p>Join challenges</p>
+                </div>
+                <span className="dash-qa-arrow">→</span>
+              </div>
+
+            </div>
+          </div>
+
+          {/* Daily Challenge Component */}
+          {(() => {
+            const solvedTodayCount = activities.filter(a => {
+              if (a.type !== "problem_solved") return false;
+              if (!a.time) return true; // assuming mock data without time is today
+              const actDate = new Date(a.time);
+              const now = new Date();
+              return actDate.getDate() === now.getDate() && 
+                     actDate.getMonth() === now.getMonth() && 
+                     actDate.getFullYear() === now.getFullYear();
+            }).length;
+            const targetDaily = 2;
+            const progress = Math.min(solvedTodayCount, targetDaily);
+            const isCompleted = progress >= targetDaily;
+
+            return (
+              <div className="dash-panel dash-daily-panel">
+                <div className="dash-daily-left">
+                  <div className="dash-daily-icon">⚡</div>
+                  <div className="dash-daily-text">
+                    <h4>Daily Challenge</h4>
+                    <p>{isCompleted ? "Challenge Complete! Awesome work!" : "Solve 2 problems today to complete your challenge!"}</p>
+                  </div>
+                </div>
+                <div className="dash-daily-right">
+                  <div className="dash-daily-prog-text">Progress <span>{progress} / {targetDaily}</span></div>
+                  <div className="dash-daily-prog-bar-bg">
+                     <div className="dash-daily-prog-bar-fill" style={{width: `${(progress / targetDaily) * 100}%`, background: isCompleted ? '#10B981' : undefined}}></div>
+                  </div>
+                  <button 
+                    className="dash-daily-btn" 
+                    onClick={() => setPage("problemSolving")}
+                    style={{ opacity: isCompleted ? 0.6 : 1, cursor: isCompleted ? 'default' : 'pointer' }}
+                  >
+                    {isCompleted ? "Done" : "Start Challenge"}
+                  </button>
                 </div>
               </div>
-            )}
-          </div>
+            );
+          })()}
+
         </div>
       </div>
 
-      {/* BOTTOM ROW */}
-      <div className="db-bottom-grid">
-        {/* Badges Section */}
-        <div className="db-panel db-badges-panel">
-          <div className="db-panel-header">
-            <span className="db-panel-icon">🏆</span>
-            <div>
-              <h3 className="db-panel-title">Your Badges</h3>
-              <p className="db-panel-subtitle">Achievements you've earned</p>
-            </div>
-          </div>
-          <div className="db-badges-grid">
-            {stats.currentLevel === "Bronze" && <span className="db-badge">🥉 Bronze</span>}
-            {(stats.currentLevel === "Silver" || stats.currentLevel === "Gold" || stats.currentLevel === "Platinum") && (
-              <>
-                <span className="db-badge">🥉 Bronze</span>
-                <span className="db-badge">🥈 Silver</span>
-              </>
-            )}
-            {(stats.currentLevel === "Gold" || stats.currentLevel === "Platinum") && (
-              <span className="db-badge">🥇 Gold</span>
-            )}
-            {stats.currentLevel === "Platinum" && (
-              <span className="db-badge">💎 Platinum</span>
-            )}
-            {stats.accuracy >= 90 && <span className="db-badge">🏆 Problem Solver</span>}
 
-            {/* Contest Badges */}
-            {contestBadges.map(badge => (
-              <span
-                key={badge.id}
-                className="db-badge contest-badge"
-                style={{ borderColor: badge.badge_color }}
-                title={`${badge.badge_name}: ${badge.description} (${badge.contest_title})`}
-              >
-                {badge.badge_icon} {badge.badge_name}
-              </span>
-            ))}
-          </div>
-        </div>
 
-        {/* Today's Challenge */}
-        <div className="db-panel db-challenge-panel">
-          <div className="db-panel-header">
-            <span className="db-panel-icon">📅</span>
-            <div>
-              <h3 className="db-panel-title">Today's Challenge</h3>
-              <p className="db-panel-subtitle">Complete to earn bonus points!</p>
-            </div>
-          </div>
-          <div className="db-challenge-content">
-            <div className="db-challenge-info">
-              <h4>Solve a New Problem</h4>
-              <p>Difficulty: Easy • Reward: 50 points</p>
-            </div>
-            <button className="db-challenge-btn" onClick={() => setPage("problemSolving")}>
-              Start Challenge
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

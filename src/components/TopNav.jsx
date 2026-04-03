@@ -1,10 +1,43 @@
 // TopNav.jsx – Horizontal Navigation Bar with All Navigation Items
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import "../App.css";
 
 function TopNav({ setPage, activePage, userRole, onMenuClick, isDark, toggleTheme, onLogout }) {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [showSearch, setShowSearch] = useState(false);
+    const searchRef = useRef(null);
     const adminUser = JSON.parse(localStorage.getItem('user'));
+
+    // Handle clicking outside to close search
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (searchRef.current && !searchRef.current.contains(event.target)) {
+                setShowSearch(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    // Simulated global search indexes
+    const searchIndex = [
+        { title: "Two Sum", type: "Problem", icon: "🔥", route: "problemSolving" },
+        { title: "Reverse Linked List", type: "Problem", icon: "💡", route: "problemSolving" },
+        { title: "AI Code Analyzer", type: "Tool", icon: "✨", route: "analyzer" },
+        { title: "Code Converter", type: "Tool", icon: "🔄", route: "converter" },
+        { title: "Weekly Contest #45", type: "Contest", icon: "🏆", route: "contests" },
+        { title: "Project Gallery", type: "Community", icon: "📚", route: "upload" },
+        { title: "Connections & Friends", type: "Users", icon: "👥", route: "connections" },
+        { title: "Dashboard & Insights", type: "Page", icon: "📊", route: "dashboard" }
+    ];
+
+    const searchResults = searchQuery.trim() 
+        ? searchIndex.filter(item => 
+            item.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+            item.type.toLowerCase().includes(searchQuery.toLowerCase())
+          )
+        : [];
 
     // Admin menu
     const adminMenu = [
@@ -26,31 +59,77 @@ function TopNav({ setPage, activePage, userRole, onMenuClick, isDark, toggleThem
     const handleItemClick = (key) => {
         setPage(key);
         setMobileMenuOpen(false);
+        setShowSearch(false);
+        setSearchQuery("");
     };
 
     return (
         <>
             <nav className="top-nav">
                 <div className="top-nav-container">
-                    {/* Logo */}
-                    <div className="top-nav-brand" onClick={() => handleItemClick("dashboard")}>
-                        <img src={require('../assets/logo.png')} alt="CodeGenius" className="top-nav-logo" />
+
+                    {/* Global Search Bar */}
+                    <div className="top-nav-search" ref={searchRef}>
+                        <svg className="top-nav-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="11" cy="11" r="8" />
+                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                        </svg>
+                        <input 
+                            type="text" 
+                            placeholder="Search problems, users, or contests..." 
+                            aria-label="Search" 
+                            value={searchQuery}
+                            onChange={(e) => {
+                                setSearchQuery(e.target.value);
+                                setShowSearch(true);
+                            }}
+                            onFocus={() => setShowSearch(true)}
+                        />
+                        
+                        {/* Search Dropdown Results */}
+                        {showSearch && searchQuery.trim() && (
+                            <div className="search-dropdown" style={{ 
+                                position: 'absolute', top: '100%', left: 0, right: 0, 
+                                marginTop: '8px', background: isDark ? '#1E293B' : '#ffffff', 
+                                border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`, 
+                                borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', 
+                                zIndex: 1000, overflow: 'hidden'
+                            }}>
+                                {searchResults.length > 0 ? (
+                                    <ul style={{ listStyle: 'none', margin: 0, padding: '8px 0' }}>
+                                        {searchResults.map((item, idx) => (
+                                            <li key={idx} 
+                                                style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', transition: 'background 0.2s', borderBottom: idx !== searchResults.length -1 ? `1px solid ${isDark ? '#334155' : '#f1f5f9'}` : 'none' }}
+                                                onMouseEnter={(e) => e.currentTarget.style.background = isDark ? '#334155' : '#f8fafc'}
+                                                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                                onClick={() => handleItemClick(item.route)}
+                                            >
+                                                <span style={{ fontSize: '1.2rem' }}>{item.icon}</span>
+                                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                    <span style={{ fontSize: '0.9rem', fontWeight: 600, color: isDark ? '#f8fafc' : '#0f172a' }}>{item.title}</span>
+                                                    <span style={{ fontSize: '0.75rem', color: isDark ? '#94a3b8' : '#64748b' }}>{item.type}</span>
+                                                </div>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : (
+                                    <div style={{ padding: '16px', textAlign: 'center', color: '#64748b', fontSize: '0.9rem' }}>
+                                        No results found for "{searchQuery}"
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
 
-                    {/* Desktop Menu - Centered */}
-                    <ul className="top-nav-menu">
-                        {menu.map((item) => (
-                            <li
-                                key={item.key}
-                                className={`top-nav-item ${activePage === item.key ? "active" : ""}`}
-                                onClick={() => handleItemClick(item.key)}
-                                title={item.label}
-                            >
-                                <span className="top-nav-icon">{item.icon}</span>
-                                <span className="top-nav-label">{item.label}</span>
-                            </li>
-                        ))}
-                    </ul>
+                    {/* Secondary Links for Users */}
+                    {userRole !== "Admin" && (
+                        <div className="top-nav-secondary-links" style={{ display: 'none' }}>
+                            <button className={`topnav-link ${activePage === 'upload' ? 'active' : ''}`} onClick={() => handleItemClick('upload')}>Projects</button>
+                            <button className={`topnav-link ${activePage === 'connections' ? 'active' : ''}`} onClick={() => handleItemClick('connections')}>Community</button>
+                            <button className={`topnav-link ${activePage === 'saved' ? 'active' : ''}`} onClick={() => handleItemClick('saved')}>Saved</button>
+                            <button className={`topnav-link ${activePage === 'insights' ? 'active' : ''}`} onClick={() => handleItemClick('insights')}>Insights</button>
+                        </div>
+                    )}
 
                     {/* Right side - Notification & Menu button (users) OR Admin controls */}
                     <div className="top-nav-actions">
@@ -120,6 +199,23 @@ function TopNav({ setPage, activePage, userRole, onMenuClick, isDark, toggleThem
                                     </svg>
                                 </button>
 
+                                {/* Settings Gear Icon */}
+                                <button className="top-nav-icon-btn" onClick={() => handleItemClick("settings")} title="Account Settings">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                                    </svg>
+                                </button>
+
+                                {/* User Profile Avatar (acts as Profile link) */}
+                                <button
+                                    className="top-nav-profile-avatar"
+                                    onClick={() => handleItemClick("profile")}
+                                    title="Profile Settings"
+                                >
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="8" r="4" /><path d="M20 21a8 8 0 0 0-16 0" /></svg>
+                                </button>
+
                                 {/* Menu Button */}
                                 <button className="top-nav-menu-btn" onClick={onMenuClick} title="Menu">
                                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -156,16 +252,7 @@ function TopNav({ setPage, activePage, userRole, onMenuClick, isDark, toggleThem
                 {/* Mobile dropdown menu */}
                 {mobileMenuOpen && (
                     <div className="top-nav-mobile-menu">
-                        {menu.map((item) => (
-                            <div
-                                key={item.key}
-                                className={`top-nav-mobile-item ${activePage === item.key ? "active" : ""}`}
-                                onClick={() => handleItemClick(item.key)}
-                            >
-                                <span className="top-nav-icon">{item.icon}</span>
-                                <span className="top-nav-label">{item.label}</span>
-                            </div>
-                        ))}
+                        {/* Mobile Navigation Links - REMOVED (Navigation moved to LeftSidebar) */}
                         {userRole !== "Admin" && (
                             <>
                                 <div className="top-nav-mobile-divider"></div>

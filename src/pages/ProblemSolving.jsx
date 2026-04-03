@@ -1,25 +1,41 @@
 import React, { useState, useRef, useEffect } from "react";
 import Prism from "prismjs";
-import "prismjs/themes/prism-tomorrow.css";
 import "prismjs/components/prism-python";
 import "prismjs/components/prism-javascript";
 import "prismjs/components/prism-java";
 import "prismjs/components/prism-c";
 import "prismjs/components/prism-cpp";
 import "../App.css";
+import "./ProblemSolvingV2.css";
 import { getCurrentUser, saveProblem } from "../services/api";
 import { checkLanguageMismatch } from "../utils/codeUtils";
 
-function ProblemSolving() {
-  const [difficulty, setDifficulty] = useState("Easy");
-  const [problemLang, setProblemLang] = useState("JavaScript");
-  const [language, setLanguage] = useState("JavaScript");
-  const [problemType, setProblemType] = useState("DSA");
+function ProblemSolving({ problemData }) {
+  const [difficulty, setDifficulty] = useState(problemData?.difficulty || "Easy");
+  const [problemLang, setProblemLang] = useState(problemData?.language || "JavaScript");
+  const [language, setLanguage] = useState(problemData?.language || "JavaScript");
+  const [problemType, setProblemType] = useState(problemData?.category || "DSA");
 
   const [problem, setProblem] = useState("");
   const [description, setDescription] = useState("");
   const [examples, setExamples] = useState([]);
   const [constraints, setConstraints] = useState([]);
+
+  // Use the passed problem data if available
+  useEffect(() => {
+    if (problemData) {
+      setProblem(problemData.title || "");
+      setDescription(problemData.description || "");
+      setExamples(problemData.examples || []);
+      setConstraints(problemData.constraints || []);
+      
+      const template = problemData.starterCode
+        ? problemData.starterCode
+        : (templates[problemData.language || "JavaScript"] || templates.JavaScript);
+      setSolution(template);
+    }
+  }, [problemData]);
+
   const [solution, setSolution] = useState("");
   const [initialTemplate, setInitialTemplate] = useState("");
   const [result, setResult] = useState("");
@@ -38,9 +54,48 @@ function ProblemSolving() {
   const [testResults, setTestResults] = useState(null);
   const [isRunning, setIsRunning] = useState(false);
   const [executionStats, setExecutionStats] = useState(null);
-  const [activeResultTab, setActiveResultTab] = useState('tests'); // 'tests' or 'feedback'
+  const [activeResultTab, setActiveResultTab] = useState('console');
+
+  // Terminal State
+  const [terminalMode, setTerminalMode] = useState('command'); // 'command', 'input', 'executing'
+  const [terminalInputBuffer, setTerminalInputBuffer] = useState("");
+  const [customInput, setCustomInput] = useState("");
+  const [customOutput, setCustomOutput] = useState(null);
+  const [commandHistory, setCommandHistory] = useState([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const terminalInputRef = useRef(null);
+
+  const [runLanguage, setRunLanguage] = useState(null);
+  const [terminalHistory, setTerminalHistory] = useState([
+    { type: 'system', text: 'CodeGenius Terminal v2.1.0\nType "info" to see available commands.' }
+  ]);
+
+  // Timer state
+  const [timerSeconds, setTimerSeconds] = useState(0);
+  const [timerActive, setTimerActive] = useState(false);
+  const timerRef = useRef(null);
+
+  // Left panel tab
+  const [descTab, setDescTab] = useState('problem');
+  const [hintsRevealed, setHintsRevealed] = useState(0);
 
   const solutionHighlightRef = useRef(null);
+
+  // Timer effect
+  useEffect(() => {
+    if (timerActive) {
+      timerRef.current = setInterval(() => setTimerSeconds(s => s + 1), 1000);
+    } else {
+      clearInterval(timerRef.current);
+    }
+    return () => clearInterval(timerRef.current);
+  }, [timerActive]);
+
+  const formatTimer = (s) => {
+    const m = Math.floor(s / 60).toString().padStart(2, '0');
+    const sec = (s % 60).toString().padStart(2, '0');
+    return `${m}:${sec}`;
+  };
 
   // Language templates
   const templates = {
@@ -81,14 +136,77 @@ public:
     Java: "java",
   };
 
+  // Topics relevant to each programming language
+  const topicsByLanguage = {
+    JavaScript: [
+      { value: "DSA", label: "DSA" },
+      { value: "Algorithms", label: "Algorithms" },
+      { value: "String Manipulation", label: "Strings" },
+      { value: "Array & Matrix", label: "Arrays" },
+      { value: "Dynamic Programming", label: "DP" },
+      { value: "Web Development", label: "Web Dev" },
+      { value: "Async Programming", label: "Async/Promises" },
+      { value: "DOM Manipulation", label: "DOM" },
+      { value: "Closures & Scope", label: "Closures" },
+      { value: "Functional Programming", label: "Functional" },
+    ],
+    Python: [
+      { value: "DSA", label: "DSA" },
+      { value: "Algorithms", label: "Algorithms" },
+      { value: "String Manipulation", label: "Strings" },
+      { value: "Array & Matrix", label: "Arrays" },
+      { value: "Dynamic Programming", label: "DP" },
+      { value: "Database", label: "Database" },
+      { value: "File Handling", label: "File Handling" },
+      { value: "OOP Concepts", label: "OOP" },
+      { value: "List Comprehension", label: "Comprehensions" },
+      { value: "Decorators & Generators", label: "Decorators" },
+    ],
+    "C++": [
+      { value: "DSA", label: "DSA" },
+      { value: "Algorithms", label: "Algorithms" },
+      { value: "String Manipulation", label: "Strings" },
+      { value: "Array & Matrix", label: "Arrays" },
+      { value: "Dynamic Programming", label: "DP" },
+      { value: "Pointers & Memory", label: "Pointers" },
+      { value: "STL Containers", label: "STL" },
+      { value: "OOP Concepts", label: "OOP" },
+      { value: "Recursion & Backtracking", label: "Recursion" },
+      { value: "Bit Manipulation", label: "Bit Manipulation" },
+    ],
+    Java: [
+      { value: "DSA", label: "DSA" },
+      { value: "Algorithms", label: "Algorithms" },
+      { value: "String Manipulation", label: "Strings" },
+      { value: "Array & Matrix", label: "Arrays" },
+      { value: "Dynamic Programming", label: "DP" },
+      { value: "OOP Concepts", label: "OOP" },
+      { value: "Collections Framework", label: "Collections" },
+      { value: "Multithreading", label: "Threads" },
+      { value: "Exception Handling", label: "Exceptions" },
+      { value: "System Design", label: "System Design" },
+    ],
+  };
+
+  // Get current topics based on selected language
+  const currentTopics = topicsByLanguage[problemLang] || topicsByLanguage.JavaScript;
+
+  // Reset topic when language changes if current topic isn't valid
+  useEffect(() => {
+    const validValues = currentTopics.map(t => t.value);
+    if (!validValues.includes(problemType)) {
+      setProblemType(currentTopics[0].value);
+    }
+  }, [problemLang]);
+
   // Set initial template when language changes
   useEffect(() => {
-    if (!solution && !problem) {
+    if (!solution && !problem && !problemData) {
       const template = templates[language] || templates.JavaScript;
       setSolution(template);
       setInitialTemplate(template);
     }
-  }, [language]);
+  }, [language, problemData]);
 
   // Highlight code using Prism
   const highlightCode = (code, lang) => {
@@ -125,9 +243,9 @@ public:
 
   // Sync scroll
   const handleScrollSync = (e) => {
-    const scrollTop = e.target.scrollTop;
     if (solutionHighlightRef.current) {
-      solutionHighlightRef.current.scrollTop = scrollTop;
+      solutionHighlightRef.current.scrollTop = e.target.scrollTop;
+      solutionHighlightRef.current.scrollLeft = e.target.scrollLeft;
     }
   };
 
@@ -264,11 +382,19 @@ public:
       setExamples(data.examples || []);
       setConstraints(data.constraints || []);
 
-      // Set template for the language
-      const template = templates[problemLang] || templates.JavaScript;
+      // Use AI-generated starter code if available, otherwise fall back to static template
+      const template = data.starterCode
+        ? data.starterCode
+        : (templates[problemLang] || templates.JavaScript);
       setSolution(template);
       setInitialTemplate(template);
       setLanguage(problemLang);
+
+      // Start timer
+      setTimerSeconds(0);
+      setTimerActive(true);
+      setDescTab('problem');
+      setHintsRevealed(0);
     } catch (err) {
       console.error(err);
       setResult("❌ Could not generate problem");
@@ -361,6 +487,114 @@ public:
   };
 
   // -------------------------------
+  // RUN CUSTOM CODE - Interactive CLI
+  // -------------------------------
+  const handleTerminalSubmit = async (line) => {
+    if (terminalMode === 'command') {
+      const cmd = line.trim().toLowerCase();
+      if (cmd === 'clear') {
+        setTerminalHistory([{ type: 'system', text: 'CodeGenius Terminal v2.1.0\nType "info" to see available commands.' }]);
+      } else if (cmd === 'info') {
+        const infoText = `---\nAvailable Commands:\n\nrun [language]\n→ Execute code\nExample:\nrun javascript\nrun python\nrun cpp\nrun java\n\nclear\n→ Clear terminal screen\n\ninfo\n→ Show all commands and usage\n---`;
+        setTerminalHistory(prev => [...prev, { type: 'command', text: `> ${line}` }, { type: 'system', text: infoText }]);
+      } else if (cmd.startsWith('run')) {
+        const parts = cmd.split(' ');
+        setRunLanguage(parts.length > 1 ? parts[1] : null);
+        
+        setTerminalHistory(prev => [
+            ...prev, 
+            { type: 'command', text: `> ${line}` },
+            { type: 'system', text: `[Input Mode: Type inputs below. Press Enter on an empty line to execute, or type 'exit' to cancel.]` }
+        ]);
+        setTerminalMode('input');
+        setTerminalInputBuffer("");
+        setHistoryIndex(-1);
+      } else {
+        setTerminalHistory(prev => [...prev, { type: 'command', text: `> ${line}` }, { type: 'error', text: `Command not found: ${cmd}\nType "info" for available commands.` }]);
+      }
+      if (line.trim()) {
+        setCommandHistory(prev => [line, ...prev]);
+      }
+      setCustomInput("");
+    } else if (terminalMode === 'input') {
+      const trimmed = line.trim().toLowerCase();
+      if (trimmed === 'exit' || trimmed === 'clear') {
+        setTerminalHistory(prev => [...prev, { type: 'input', text: `$ ${line}` }, { type: 'system', text: 'Input mode cancelled.' }]);
+        setTerminalMode('command');
+        setTerminalInputBuffer("");
+        setCustomInput("");
+      } else if (line === '') {
+        // empty line executes
+        setTerminalHistory(prev => [...prev, { type: 'system', text: 'Executing...' }]);
+        setTerminalMode('executing');
+        setCustomInput("");
+        
+        try {
+          const langMap = { 'JavaScript': 'javascript', 'Python': 'python', 'Java': 'java', 'C++': 'cpp' };
+          const res = await fetch("http://localhost:4000/api/execute/run", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              code: solution,
+              language: runLanguage || langMap[language] || 'javascript',
+              input: terminalInputBuffer
+            }),
+          });
+          const data = await res.json();
+          if (data.success && !data.error) {
+            setTerminalHistory(prev => {
+              const removedExecuting = prev.filter(h => h.text !== 'Executing...');
+              const outText = data.output ? data.output : 'Done (No output)';
+              return [...removedExecuting, { type: 'output', text: `Output:\n${outText}\n\n✔ Execution Successful (time: ${data.executionTime ? data.executionTime.toFixed(1) : '<1'}ms)` }];
+            });
+          } else {
+            setTerminalHistory(prev => {
+              const removedExecuting = prev.filter(h => h.text !== 'Executing...');
+              return [...removedExecuting, { type: 'error', text: `Error:\n${data.error || 'Execution failed'}` }];
+            });
+          }
+        } catch (err) {
+          setTerminalHistory(prev => {
+            const removedExecuting = prev.filter(h => h.text !== 'Executing...');
+            return [...removedExecuting, { type: 'error', text: "Error:\nFailed to connect to real execution server" }];
+          });
+        } finally {
+          setTerminalMode('command');
+        }
+      } else {
+        setTerminalHistory(prev => [...prev, { type: 'input', text: `$ ${line}` }]);
+        setTerminalInputBuffer(prev => prev + line + "\n");
+        setCustomInput("");
+      }
+    }
+  };
+
+  const handleTerminalKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleTerminalSubmit(customInput);
+    } else if (e.key === 'ArrowUp' && terminalMode === 'command') {
+      e.preventDefault();
+      if (commandHistory.length > 0) {
+        const nextIdx = historyIndex < commandHistory.length - 1 ? historyIndex + 1 : historyIndex;
+        setHistoryIndex(nextIdx);
+        setCustomInput(commandHistory[nextIdx] || "");
+      }
+    } else if (e.key === 'ArrowDown' && terminalMode === 'command') {
+      e.preventDefault();
+      if (historyIndex > 0) {
+        const nextIdx = historyIndex - 1;
+        setHistoryIndex(nextIdx);
+        setCustomInput(commandHistory[nextIdx] || "");
+      } else if (historyIndex === 0) {
+        setHistoryIndex(-1);
+        setCustomInput("");
+      }
+    }
+  };
+
+
+  // -------------------------------
   // CHECK SOLUTION
   // -------------------------------
   const checkSolution = async () => {
@@ -383,6 +617,41 @@ public:
       setResult("⚠️ Please log in to track your progress!");
       return;
     }
+
+    // Auto-run in terminal
+    setActiveResultTab('console');
+    setTerminalHistory(prev => [
+      ...prev,
+      { type: 'command', text: `> [System] Auto-running submitted solution...` },
+      { type: 'system', text: `If your code requires standard input, please use the "run" command manually to provide it.` },
+      { type: 'system', text: 'Executing...' }
+    ]);
+    
+    const langMap = { 'JavaScript': 'javascript', 'Python': 'python', 'Java': 'java', 'C++': 'cpp' };
+    
+    fetch("http://localhost:4000/api/execute/run", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: solution, language: langMap[language] || 'javascript', input: '' }),
+    }).then(r => r.json()).then(data => {
+      if (data.success && !data.error) {
+        setTerminalHistory(prev => {
+          const removed = prev.filter(h => h.text !== 'Executing...');
+          const outText = data.output ? data.output : 'Done (No output)';
+          return [...removed, { type: 'output', text: `Auto-Run Output:\n${outText}\n\n✔ Execution Successful (time: ${data.executionTime ? data.executionTime.toFixed(1) : '<1'}ms)` }];
+        });
+      } else {
+        setTerminalHistory(prev => {
+          const removed = prev.filter(h => h.text !== 'Executing...');
+          return [...removed, { type: 'error', text: `Auto-Run Error:\n${data.error || 'Execution failed'}` }];
+        });
+      }
+    }).catch(err => {
+      setTerminalHistory(prev => {
+        const removed = prev.filter(h => h.text !== 'Executing...');
+        return [...removed, { type: 'error', text: "Error: Failed to connect to execution server" }];
+      });
+    });
 
     try {
       const res = await fetch("http://localhost:4000/api/problem-check", {
@@ -430,6 +699,7 @@ public:
           score: data.feedback.score || 100,
           suggestions: data.feedback.suggestions || [],
           correctSolution: data.feedback.optimizedSolution || "",
+          errorExplanation: data.feedback.errorExplanation || "",
         });
       } else {
         generateFeedback(backendResult, data.score);
@@ -506,449 +776,361 @@ public:
     setShowAIFeedback(true);
   };
 
-  return (
-    <div className={`problem-solving-page ${isEditorMaximized ? 'editor-maximized' : ''}`}>
+  const diffColor = { Easy: '#10b981', Medium: '#f59e0b', Hard: '#ef4444' }[difficulty] || '#10b981';
 
-      {/* HEADER */}
-      <div className="ps-header">
-        <div className="ps-header-left">
-          <h1 className="ps-page-title">Problem Solving</h1>
-          <span className="ps-page-subtitle">Practice AI-generated coding challenges</span>
+  // Hint bank (static — real app would serve from backend)
+  const hints = [
+    'Break the problem into smaller sub-problems.',
+    'Consider edge cases: empty input, single element, negative numbers.',
+    'Think about time complexity — can you do better than O(n²)?',
+  ];
+
+  return (
+    <div className="ps-page-v2">
+
+      {/* ── TOP TOOLBAR ── */}
+      <div className="ps-toolbar-v2">
+        <div className="ps-toolbar-left-v2">
+          <h2 className="ps-toolbar-title-v2">Problem Solving</h2>
+          <span className="ps-toolbar-sep">·</span>
+
+          {/* Difficulty pill-select */}
+          <div className="ps-pill-select">
+            <span className="ps-pill-dot" style={{ background: diffColor }} />
+            <select value={difficulty} onChange={e => setDifficulty(e.target.value)} className="ps-toolbar-select">
+              <option>Easy</option><option>Medium</option><option>Hard</option>
+            </select>
+          </div>
+
+          {/* Language */}
+          <div className="ps-pill-select">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="16,18 22,12 16,6"/><polyline points="8,6 2,12 8,18"/></svg>
+            <select value={problemLang} onChange={e => setProblemLang(e.target.value)} className="ps-toolbar-select">
+              <option>JavaScript</option><option>Python</option><option>C++</option><option>Java</option>
+            </select>
+          </div>
+
+          {/* Problem Type */}
+          <div className="ps-pill-select">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <select value={problemType} onChange={e => setProblemType(e.target.value)} className="ps-toolbar-select">
+              {currentTopics.map(topic => (
+                <option key={topic.value} value={topic.value}>{topic.label}</option>
+              ))}
+            </select>
+          </div>
         </div>
-        <div className="ps-header-actions">
-          <div className="ps-dropdown-group">
-            <label>Difficulty</label>
-            <select
-              value={difficulty}
-              onChange={(e) => setDifficulty(e.target.value)}
-              className="ps-select"
-            >
-              <option>Easy</option>
-              <option>Medium</option>
-              <option>Hard</option>
-            </select>
-          </div>
-          <div className="ps-dropdown-group">
-            <label>Language</label>
-            <select
-              value={problemLang}
-              onChange={(e) => setProblemLang(e.target.value)}
-              className="ps-select"
-            >
-              <option>JavaScript</option>
-              <option>Python</option>
-              <option>C++</option>
-              <option>Java</option>
-            </select>
-          </div>
-          <div className="ps-dropdown-group">
-            <label>Problem Type</label>
-            <select
-              value={problemType}
-              onChange={(e) => setProblemType(e.target.value)}
-              className="ps-select"
-            >
-              <option value="DSA">DSA (Data Structures & Algorithms)</option>
-              <option value="Algorithms">Algorithms</option>
-              <option value="Web Development">Web Development</option>
-              <option value="Database">Database & SQL</option>
-              <option value="System Design">System Design</option>
-              <option value="String Manipulation">String Manipulation</option>
-              <option value="Array & Matrix">Array & Matrix</option>
-              <option value="Dynamic Programming">Dynamic Programming</option>
-            </select>
-          </div>
-          <button className="ps-generate-btn" onClick={generateProblem}>
-            <span className="btn-icon">⚡</span>
-            Generate Problem
+
+        <div className="ps-toolbar-right-v2">
+          {/* Timer */}
+          {timerActive && (
+            <div className="ps-timer-chip">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              {formatTimer(timerSeconds)}
+            </div>
+          )}
+
+          <button
+            className={`ps-generate-btn-v2 ${isGenerating ? 'generating' : ''}`}
+            onClick={generateProblem}
+            disabled={isGenerating}
+          >
+            {isGenerating ? (
+              <><span className="ps-spinner-sm" /> Generating...</>
+            ) : (
+              <><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Generate Problem</>
+            )}
           </button>
         </div>
       </div>
 
-      {/* MAIN LAYOUT */}
-      <div className="ps-main-layout">
+      {/* ── MAIN 2-COLUMN LAYOUT ── */}
+      <div className="ps-main-v2">
 
-        {/* PANELS ROW - Description and Editor side by side */}
-        <div className="ps-panels-row">
-
-          {/* LEFT PANEL - Problem Description */}
-          <div className={`ps-description-panel ${isEditorMaximized ? 'hidden' : ''}`}>
-            <div className="ps-panel-header">
-              <div className="ps-tabs">
-                <button className="ps-tab active">
-                  <span className="tab-icon">📋</span>
-                  Description
-                </button>
-              </div>
-              <button className="ps-save-problem-btn" onClick={handleSaveProblem}>
-                <span>💾</span> Save Problem
+        {/* LEFT PANEL — Problem Description */}
+        <div className="ps-left-v2">
+          {/* Tab Bar */}
+          <div className="ps-desc-tabs">
+            {[['problem','📋','Problem'],['examples','📌','Examples'],['constraints','⛓','Constraints'],['hints','💡','Hints']].map(([key, icon, label]) => (
+              <button
+                key={key}
+                className={`ps-desc-tab ${descTab === key ? 'active' : ''}`}
+                onClick={() => setDescTab(key)}
+              >
+                {icon} {label}
               </button>
-            </div>
+            ))}
+          </div>
 
-            <div className="ps-panel-content">
-              {/* Show custom loader while generating */}
-              {isGenerating ? (
-                <div className="ps-generating-loader">
-                  <div className="loader-wrapper">
-                    <div className="loader"></div>
-                    <span className="loader-letter">G</span>
-                    <span className="loader-letter">e</span>
-                    <span className="loader-letter">n</span>
-                    <span className="loader-letter">e</span>
-                    <span className="loader-letter">r</span>
-                    <span className="loader-letter">a</span>
-                    <span className="loader-letter">t</span>
-                    <span className="loader-letter">i</span>
-                    <span className="loader-letter">n</span>
-                    <span className="loader-letter">g</span>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <div className="ps-problem-header">
-                    <h2 className="ps-problem-title">
-                      {problem || "Click Generate to Start"}
-                    </h2>
-                    {problem && (
-                      <span className={`ps-difficulty-badge ${difficulty.toLowerCase()}`}>
+          {/* Tab Content */}
+          <div className="ps-desc-body">
+            {isGenerating ? (
+              <div className="ps-loading-state">
+                <div className="ps-loader-ring" />
+                <p>Generating problem...</p>
+              </div>
+            ) : !problem ? (
+              <div className="ps-empty-v2">
+                <span className="ps-empty-icon">🎯</span>
+                <p>Generate a problem to start practicing</p>
+                <small>Select difficulty, language, and type above</small>
+              </div>
+            ) : (
+              <>
+                {/* Problem Tab */}
+                {descTab === 'problem' && (
+                  <div className="ps-tab-content">
+                    <div className="ps-problem-meta">
+                      <h2 className="ps-problem-title-v2">{problem}</h2>
+                      <span className="ps-diff-badge" style={{ background: `${diffColor}22`, color: diffColor, border: `1px solid ${diffColor}44` }}>
                         {difficulty}
                       </span>
+                    </div>
+                    <p className="ps-desc-text">{description}</p>
+                  </div>
+                )}
+
+                {/* Examples Tab */}
+                {descTab === 'examples' && (
+                  <div className="ps-tab-content">
+                    {examples.length > 0 ? examples.map((ex, i) => (
+                      <div key={i} className="ps-example-v2">
+                        <div className="ps-example-label">Example {i + 1}</div>
+                        <div className="ps-example-rows">
+                          <div className="ps-ex-row"><span className="ps-ex-key">Input:</span><code className="ps-ex-val">{ex.input}</code></div>
+                          <div className="ps-ex-row"><span className="ps-ex-key">Output:</span><code className="ps-ex-val">{ex.output}</code></div>
+                          {ex.explain && <div className="ps-ex-row"><span className="ps-ex-key">Explain:</span><span className="ps-ex-explain">{ex.explain}</span></div>}
+                        </div>
+                      </div>
+                    )) : <p style={{color:'var(--text-secondary)'}}>No examples available</p>}
+                  </div>
+                )}
+
+                {/* Constraints Tab */}
+                {descTab === 'constraints' && (
+                  <div className="ps-tab-content">
+                    <ul className="ps-constraints-v2">
+                      {constraints.map((c, i) => <li key={i}>{c}</li>)}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Hints Tab */}
+                {descTab === 'hints' && (
+                  <div className="ps-tab-content">
+                    {hints.slice(0, hintsRevealed).map((h, i) => (
+                      <div key={i} className="ps-hint-card">
+                        <span className="ps-hint-num">Hint {i + 1}</span>
+                        <p>{h}</p>
+                      </div>
+                    ))}
+                    {hintsRevealed < hints.length ? (
+                      <button className="ps-reveal-hint" onClick={() => setHintsRevealed(h => h + 1)}>
+                        💡 Reveal Hint {hintsRevealed + 1}
+                      </button>
+                    ) : (
+                      <p style={{color:'var(--text-secondary)', fontSize:'0.85rem'}}>All hints revealed.</p>
                     )}
                   </div>
+                )}
+              </>
+            )}
+          </div>
 
-                  {problem && (
-                    <>
+          {/* Save Problem button */}
+          {problem && (
+            <div className="ps-left-footer">
+              {saveMessage && <span className="ps-save-msg">{saveMessage}</span>}
+              <button className="ps-save-problem-v2" onClick={handleSaveProblem}>💾 Save Problem</button>
+            </div>
+          )}
+        </div>
 
-                      <div className="ps-section">
-                        <p className="ps-description-text">{description}</p>
-                      </div>
+        {/* RIGHT PANEL — Editor + Console */}
+        <div className="ps-right-v2">
 
-                      <div className="ps-section">
-                        <h3 className="ps-section-title">Examples</h3>
-                        {examples.length > 0 ? (
-                          examples.map((ex, i) => (
-                            <div key={i} className="ps-example-card">
-                              <div className="ps-example-header">Example {i + 1}</div>
-                              <div className="ps-example-content">
-                                <div className="ps-example-row">
-                                  <span className="ps-label">Input:</span>
-                                  <code className="ps-code">{ex.input}</code>
-                                </div>
-                                <div className="ps-example-row">
-                                  <span className="ps-label">Output:</span>
-                                  <code className="ps-code">{ex.output}</code>
-                                </div>
-                                {ex.explain && (
-                                  <div className="ps-example-row">
-                                    <span className="ps-label">Explanation:</span>
-                                    <span className="ps-explain">{ex.explain}</span>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          ))
-                        ) : (
-                          <p className="ps-empty-text">No examples available</p>
-                        )}
-                      </div>
-
-                      <div className="ps-section">
-                        <h3 className="ps-section-title">Constraints</h3>
-                        <ul className="ps-constraints-list">
-                          {constraints.map((c, i) => (
-                            <li key={i}>{c}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    </>
-                  )}
-
-                  {!problem && (
-                    <div className="ps-empty-state">
-                      <span className="empty-icon">🎯</span>
-                      <p>Generate a problem to start practicing</p>
-                      <small>Select difficulty and language, then click Generate</small>
-                    </div>
-                  )}
-                </>
+          {/* Editor Toolbar */}
+          <div className="ps-editor-bar">
+            <div className="ps-editor-bar-left">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="16,18 22,12 16,6"/><polyline points="8,6 2,12 8,18"/></svg>
+              <span className="ps-editor-bar-label">Code</span>
+              <span className="ps-lang-pill-label">{language}</span>
+            </div>
+            <div className="ps-editor-bar-right">
+              {languageMismatch && (
+                <button className="ps-mismatch-btn" onClick={() => setLanguage(languageMismatch.detected)}>
+                  ⚠️ Switch to {languageMismatch.detected}
+                </button>
               )}
+              <button className="ps-editor-icon-btn" onClick={handleSave} title="Save solution">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              </button>
+              <button className="ps-editor-icon-btn" onClick={toggleEditorMaximize} title={isEditorMaximized ? 'Restore' : 'Maximise'}>
+                {isEditorMaximized
+                  ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="10" y1="14" x2="21" y2="3"/><line x1="3" y1="21" x2="14" y2="10"/></svg>
+                  : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+                }
+              </button>
             </div>
           </div>
 
-          {/* RIGHT PANEL - Code Editor */}
-          <div className={`ps-editor-panel ${isEditorMaximized ? 'maximized' : ''}`}>
-            {/* Editor Header/Toolbar */}
-            <div className="ps-editor-toolbar">
-              <div className="ps-toolbar-left">
-                <span className="ps-code-icon">&lt;/&gt;</span>
-                <span className="ps-toolbar-title">Code</span>
-                <select
-                  value={language}
-                  onChange={(e) => setLanguage(e.target.value)}
-                  className="ps-lang-dropdown"
-                >
-                  <option>JavaScript</option>
-                  <option>Python</option>
-                  <option>C++</option>
-                  <option>Java</option>
-                </select>
+          {/* Code Editor */}
+          <div className="ps-code-editor-v2" id="ps-editor-root">
+            <div className="ps-line-numbers">
+              <pre>{getLineNumbers(solution)}</pre>
+            </div>
+            <div className="ps-editor-wrapper">
+              <pre ref={solutionHighlightRef} className="ps-highlight-layer" aria-hidden="true">
+                <code dangerouslySetInnerHTML={{ __html: highlightCode(solution, language) + (solution.endsWith('\n') ? ' ' : '\n ') }} />
+              </pre>
+              <textarea
+                className="ps-code-textarea"
+                placeholder="// Write your solution here..."
+                value={solution}
+                onChange={e => setSolution(e.target.value)}
+                onScroll={handleScrollSync}
+                spellCheck="false"
+              />
+            </div>
+          </div>
+
+          {/* ── ALWAYS-VISIBLE OUTPUT CONSOLE ── */}
+          {!isEditorMaximized && (
+            <div className="ps-console-v2">
+              <div className="ps-console-header">
+                <div className="ps-console-tabs">
+
+                  <button className={`ps-ctab ${activeResultTab === 'feedback' ? 'active' : ''}`} onClick={() => setActiveResultTab('feedback')}>
+                    💡 AI Feedback
+                    {aiFeedback && <span className="ps-ctab-badge score">{aiFeedback.score}</span>}
+                  </button>
+                  <button className={`ps-ctab ${activeResultTab === 'console' ? 'active' : ''}`} onClick={() => setActiveResultTab('console')}>
+                    ⌨️ Terminal
+                  </button>
+                </div>
+                {executionStats && (
+                  <div className="ps-console-stats">
+                    <span>⏱ {executionStats.totalTime?.toFixed(1) || '0'}ms</span>
+                    <span>💾 {executionStats.maxMemory ? (executionStats.maxMemory/1024).toFixed(1) : '0'}MB</span>
+                  </div>
+                )}
               </div>
-              <div className="ps-toolbar-right">
-                <button className="ps-toolbar-btn save" onClick={handleSave} title="Save problem">
-                  <span>💾</span>
-                </button>
-                <button
-                  className="ps-toolbar-btn maximize"
-                  onClick={toggleEditorMaximize}
-                  title={isEditorMaximized ? "Minimize" : "Maximize"}
-                >
-                  {isEditorMaximized ? (
-                    <><span>⊖</span></>
-                  ) : (
-                    <><span>⊕</span></>
-                  )}
-                </button>
+
+              <div className="ps-console-body">
+
+                {/* AI Feedback Tab Content */}
+                {activeResultTab === 'feedback' && (
+                  <div className="ps-console-feedback">
+                    {showAIFeedback && aiFeedback ? (
+                      <>
+                        <div className="ps-fb-summary">
+                          <div className="ps-fb-score-ring">
+                            <span>{aiFeedback.score}</span>
+                            <small>Score</small>
+                          </div>
+                          <div className="ps-fb-verdict">
+                            <strong>{aiFeedback.score >= 90 ? '🌟 Excellent Solution' : aiFeedback.score >= 70 ? '✅ Good Solution' : aiFeedback.score >= 40 ? '⚠️ Needs Work' : '❌ Incorrect'}</strong>
+                            <p>{typeof aiFeedback.result === 'string' ? aiFeedback.result.replace('✅ ', '').replace('❌ ', '') : 'Analyzed.'}</p>
+                          </div>
+                        </div>
+                        {aiFeedback.errorExplanation && aiFeedback.score < 90 && (
+                          <div className="ps-fb-error-explanation" style={{ marginTop: '15px', padding: '12px', background: 'var(--bg-red, rgba(239, 68, 68, 0.1))', borderLeft: '4px solid var(--text-red, #ef4444)', borderRadius: '4px' }}>
+                            <h4 style={{ color: 'var(--text-red, #ef4444)', marginBottom: '8px', fontSize: '14px', marginTop: 0 }}>⚠️ What's Wrong?</h4>
+                            <p style={{ fontSize: '14px', lineHeight: '1.5', margin: 0 }}>{aiFeedback.errorExplanation}</p>
+                          </div>
+                        )}
+                        <div className="ps-fb-suggestions">
+                          <h4>💡 Suggestions</h4>
+                          <ul>{aiFeedback.suggestions?.map((s, i) => <li key={i}>{s}</li>)}</ul>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="ps-console-empty">
+                        <span>💡</span>
+                        <p>Submit your solution for AI feedback</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Terminal Tab Content (VS Code / HackerRank Style) */}
+                {activeResultTab === 'console' && (
+                  <div className="ps-debugger-v2" onClick={() => terminalInputRef.current?.focus()}>
+                    <div className="ps-terminal-body" id="ps-terminal-scroller">
+                      {terminalHistory.map((item, idx) => (
+                        <div key={idx} className={`ps-term-row ${item.type}`}>
+                          {item.type === 'command' && <span className="ps-term-prefix command">&gt;</span>}
+                          {item.type === 'input' && <span className="ps-term-prefix input">$</span>}
+                          {item.type === 'output' && <span className="ps-term-prefix" style={{opacity:0}}>&gt;</span>}
+                          {item.type === 'error' && <span className="ps-term-prefix" style={{opacity:0}}>&gt;</span>}
+                          {item.type === 'system' && <span className="ps-term-prefix" style={{opacity:0}}>&gt;</span>}
+                          <pre className={`ps-term-text ${item.type}`}>{item.text}</pre>
+                        </div>
+                      ))}
+
+                      {terminalMode !== 'executing' && (
+                        <div className="ps-terminal-input-row">
+                          <span className={`ps-term-prefix ${terminalMode === 'command' ? 'command' : 'input'}`}>
+                            {terminalMode === 'command' ? '>' : '$'}
+                          </span>
+                          <input
+                            ref={terminalInputRef}
+                            className="ps-terminal-native-input"
+                            value={customInput}
+                            onChange={(e) => setCustomInput(e.target.value)}
+                            onKeyDown={handleTerminalKeyDown}
+                            spellCheck="false"
+                            autoComplete="off"
+                            disabled={terminalMode === 'executing'}
+                            autoFocus
+                          />
+                        </div>
+                      )}
+                      
+                      {terminalMode === 'executing' && (
+                        <div className="ps-term-row system">
+                          <span className="ps-term-prefix" style={{opacity:0}}>&gt;</span>
+                          <pre className="ps-term-text system"><span className="ps-spinner-sm" /> Running...</pre>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
+          )}
 
-            {/* Save Message */}
-            {saveMessage && (
-              <div className={`ps-save-message ${saveMessage.includes('✅') ? 'success' : 'error'}`}>
-                {saveMessage}
-              </div>
-            )}
-
-            {/* Language Mismatch Warning */}
-            {languageMismatch && (
-              <div className="ps-mismatch-warning">
-                <span className="warning-icon">⚠️</span>
-                <span>
-                  Detected <strong>{languageMismatch.detected}</strong> code but <strong>{languageMismatch.selected}</strong> is selected.
-                </span>
-                <button onClick={() => setLanguage(languageMismatch.detected)}>
-                  Switch to {languageMismatch.detected}
-                </button>
-              </div>
-            )}
-
-            {/* Code Editor */}
-            <div className="ps-code-editor">
-              <div className="ps-line-numbers">
-                <pre>{getLineNumbers(solution)}</pre>
-              </div>
-              <div className="ps-editor-wrapper">
-                <pre
-                  ref={solutionHighlightRef}
-                  className="ps-highlight-layer"
-                  aria-hidden="true"
-                >
-                  <code
-                    dangerouslySetInnerHTML={{
-                      __html: highlightCode(solution, language) + (solution.endsWith('\n') ? ' ' : '\n ')
-                    }}
-                  />
-                </pre>
-                <textarea
-                  className="ps-code-textarea"
-                  placeholder="// Write your solution here..."
-                  value={solution}
-                  onChange={(e) => setSolution(e.target.value)}
-                  onScroll={handleScrollSync}
-                  spellCheck="false"
-                />
-              </div>
-            </div>
-
-            {/* Editor Footer/Status */}
-            <div className="ps-editor-footer">
-              <div className="ps-status-left">
-                <span className="ps-status-item">Ln 1, Col 1</span>
-                <span className="ps-status-separator">|</span>
-                <span className="ps-status-item">{language}</span>
-              </div>
-              <div className="ps-status-right">
-                <button className="ps-reset-btn" onClick={handleReset} title="Reset to template">
-                  <span>↺</span> Reset
-                </button>
-                <button className={`ps-run-btn ${isRunning ? 'running' : ''}`} onClick={runTests} disabled={isRunning}>
-                  {isRunning ? (
-                    <><span className="btn-spinner"></span> Running...</>
-                  ) : (
-                    <><span>▶</span> Run</>
-                  )}
-                </button>
-                <button className="ps-submit-btn" onClick={checkSolution}>
-                  <span>✓</span> Submit
-                </button>
-              </div>
+          {/* ── ACTION FOOTER ── */}
+          <div className="ps-action-footer">
+            <button className="ps-act-reset" onClick={handleReset}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.54"/></svg>
+              Reset
+            </button>
+            <div className="ps-act-right">
+              <button
+                className={`ps-act-run ${isRunning ? 'running' : ''}`}
+                onClick={runTests}
+                disabled={isRunning}
+              >
+                {isRunning
+                  ? <><span className="ps-spinner-sm" /> Running...</>
+                  : <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg> Run Tests</>
+                }
+              </button>
+              <button className="ps-act-submit" onClick={checkSolution}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                Submit
+              </button>
             </div>
           </div>
 
         </div>
-        {/* End of PANELS ROW */}
-
-        {/* BOTTOM PANEL - Results (Separate from Editor) */}
-        {(result || showAIFeedback || testResults) && (
-          <div className="ps-results-container">
-            <div className="ps-results-panel-separate">
-              <div className="ps-results-header">
-                <div className="ps-results-tabs">
-                  <button
-                    className={`ps-result-tab ${activeResultTab === 'tests' ? 'active' : ''}`}
-                    onClick={() => setActiveResultTab('tests')}
-                  >
-                    <span className="tab-icon">🧪</span>
-                    Test Cases
-                    {executionStats && (
-                      <span className={`tab-badge ${executionStats.passedCount === executionStats.totalCount ? 'success' : 'fail'}`}>
-                        {executionStats.passedCount}/{executionStats.totalCount}
-                      </span>
-                    )}
-                  </button>
-                  <button
-                    className={`ps-result-tab ${activeResultTab === 'feedback' ? 'active' : ''}`}
-                    onClick={() => setActiveResultTab('feedback')}
-                  >
-                    <span className="tab-icon">💡</span>
-                    AI Feedback
-                    {aiFeedback && <span className="tab-badge score">{aiFeedback.score}</span>}
-                  </button>
-                </div>
-                <div className="ps-results-actions">
-                  {executionStats && (
-                    <div className="ps-execution-stats">
-                      <span className="stat-item">
-                        <span className="stat-icon">⏱️</span>
-                        {executionStats.totalTime?.toFixed(2) || '0.00'}ms
-                      </span>
-                      <span className="stat-item">
-                        <span className="stat-icon">💾</span>
-                        {executionStats.maxMemory ? (executionStats.maxMemory / 1024).toFixed(2) : '0.00'}MB
-                      </span>
-                    </div>
-                  )}
-                  <button className="ps-close-results" onClick={() => { setResult(''); setShowAIFeedback(false); setTestResults(null); }}>
-                    ✕
-                  </button>
-                </div>
-              </div>
-
-              <div className="ps-results-content">
-                {/* Test Cases Tab */}
-                {activeResultTab === 'tests' && (
-                  <div className="ps-test-results">
-                    {/* Summary */}
-                    {result && (
-                      <div className={`ps-result-summary ${result.includes('✅') ? 'success' : result.includes('❌') ? 'fail' : 'info'}`}>
-                        <span className="summary-text">{result}</span>
-                      </div>
-                    )}
-
-                    {/* Test Cases Grid */}
-                    {testResults && testResults.results && (
-                      <div className="ps-test-cases-grid">
-                        {testResults.results.map((test, i) => (
-                          <div key={i} className={`ps-test-case-card ${test.passed ? 'passed' : 'failed'}`}>
-                            <div className="test-case-header">
-                              <div className="test-case-title">
-                                <span className={`test-status-icon ${test.passed ? 'passed' : 'failed'}`}>
-                                  {test.passed ? '✓' : '✗'}
-                                </span>
-                                <span>Test Case {test.testCaseNumber}</span>
-                              </div>
-                              <div className="test-case-meta">
-                                {test.executionTime && (
-                                  <span className="meta-item">⏱️ {test.executionTime.toFixed(2)}ms</span>
-                                )}
-                              </div>
-                            </div>
-                            <div className="test-case-body">
-                              <div className="test-row">
-                                <span className="test-label">Input:</span>
-                                <code className="test-value">{test.input || 'N/A'}</code>
-                              </div>
-                              <div className="test-row">
-                                <span className="test-label">Expected:</span>
-                                <code className="test-value expected">{test.expectedOutput || 'N/A'}</code>
-                              </div>
-                              <div className="test-row">
-                                <span className="test-label">Actual:</span>
-                                <code className={`test-value actual ${test.passed ? 'correct' : 'wrong'}`}>
-                                  {test.actualOutput || 'N/A'}
-                                </code>
-                              </div>
-                              {test.error && (
-                                <div className="test-row error">
-                                  <span className="test-label">Error:</span>
-                                  <code className="test-value error-text">{test.error}</code>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* No results yet */}
-                    {!testResults && !result && (
-                      <div className="ps-empty-results">
-                        <span className="empty-icon">🧪</span>
-                        <p>Run your code to see test results</p>
-                        <small>Click "Run" to execute your code with test cases</small>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* AI Feedback Tab */}
-                {activeResultTab === 'feedback' && (
-                  <div className="ps-feedback-section">
-                    {showAIFeedback && aiFeedback ? (
-                      <>
-                        {aiFeedback.result && (
-                          <div className="ps-feedback-result">
-                            <div className="feedback-result-icon">
-                              {aiFeedback.score >= 70 ? '✅' : aiFeedback.score >= 40 ? '⚠️' : '❌'}
-                            </div>
-                            <div className="feedback-result-text">
-                              <strong>{aiFeedback.score >= 70 ? 'Good Solution!' : aiFeedback.score >= 40 ? 'Needs Improvement' : 'Incorrect Solution'}</strong>
-                              <p>{typeof aiFeedback.result === 'string' ? aiFeedback.result.replace('✅ ', '').replace('❌ ', '') : 'Your solution has been analyzed.'}</p>
-                            </div>
-                            <div className="feedback-score">
-                              <span className="score-label">Score</span>
-                              <span className="score-value">{aiFeedback.score}</span>
-                            </div>
-                          </div>
-                        )}
-
-                        <div className="ps-feedback-card">
-                          <div className="ps-feedback-header">
-                            <span className="feedback-icon">💡</span>
-                            <span>Suggestions</span>
-                          </div>
-                          <ul className="ps-suggestions-list">
-                            {aiFeedback.suggestions.map((s, i) => (
-                              <li key={i}>{s}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="ps-empty-results">
-                        <span className="empty-icon">💡</span>
-                        <p>Submit your solution for AI feedback</p>
-                        <small>Click "Submit" to get detailed analysis and suggestions</small>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
+        {/* End right panel */}
       </div>
+      {/* End main layout */}
     </div>
   );
 }
 
 export default ProblemSolving;
+

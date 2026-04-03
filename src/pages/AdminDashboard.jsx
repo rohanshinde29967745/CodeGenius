@@ -14,19 +14,26 @@ function AdminDashboard({ setPage }) {
   const [activities, setActivities] = useState([]);
   const [popularProblems, setPopularProblems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [pendingReports, setPendingReports] = useState(0);
 
   // Fetch admin data
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [statsData, activityData, problemsData] = await Promise.all([
+        const [statsData, activityData, problemsData, reportsRes] = await Promise.all([
           getAdminStats(),
           getAdminActivity(5),
           getPopularProblems(3),
+          fetch("http://localhost:4000/api/reports/pending/count").catch(() => null),
         ]);
         setStats(statsData);
         setActivities(activityData.activities || []);
         setPopularProblems(problemsData.problems || []);
+        
+        if (reportsRes && reportsRes.ok) {
+            const data = await reportsRes.json();
+            setPendingReports(parseInt(data.count) || 0);
+        }
       } catch (error) {
         console.error("Failed to fetch admin data:", error);
       } finally {
@@ -169,7 +176,19 @@ function AdminDashboard({ setPage }) {
           <h1 className="adm-title">Platform Dashboard</h1>
           <p className="adm-subtitle">Real-time analytics and platform management overview</p>
         </div>
-        <div className="adm-header-actions">
+        <div className="adm-header-actions" style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <button className="adm-export-btn" onClick={() => setPage("adminUsers")} style={{ background: '#10b981', color: '#fff', borderColor: '#10b981' }}>
+            👥 Manage Users
+          </button>
+          <button className="adm-export-btn" onClick={() => setPage("reports")} style={{ background: '#3b82f6', color: '#fff', borderColor: '#3b82f6', position: 'relative' }}>
+            <span style={{ fontSize: '1.2rem' }}>📋</span>
+            View Reports
+            {pendingReports > 0 && (
+                <span style={{ position: 'absolute', top: '-6px', right: '-6px', background: '#ef4444', color: 'white', fontSize: '0.7rem', padding: '2px 6px', borderRadius: '10px', fontWeight: 'bold' }}>
+                    {pendingReports}
+                </span>
+            )}
+          </button>
           <button className="adm-export-btn" onClick={handleExportData}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -298,7 +317,7 @@ function AdminDashboard({ setPage }) {
             <div className="adm-contest-stat-icon">🏆</div>
             <h4 className="adm-contest-stat-label">Active Contests</h4>
             <div className="adm-contest-stat-val">{loading ? "—" : stats.activeContests || 0}</div>
-            <button className="adm-contest-btn secondary" onClick={() => setPage("contests")}>
+            <button className="adm-contest-btn secondary" onClick={() => setPage("adminContests")}>
               View All Contests
             </button>
           </div>
