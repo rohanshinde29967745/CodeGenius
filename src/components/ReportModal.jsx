@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { getCurrentUser } from '../services/api';
+import { getCurrentUser, API_SERVER } from '../services/api';
 import './ReportModal.css';
 
 const ReportModal = ({ isOpen, onClose }) => {
@@ -29,7 +29,7 @@ const ReportModal = ({ isOpen, onClose }) => {
 
         try {
             const currentUser = getCurrentUser();
-            const response = await fetch('http://localhost:4000/api/reports', {
+            const response = await fetch(`${API_SERVER}/api/reports`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

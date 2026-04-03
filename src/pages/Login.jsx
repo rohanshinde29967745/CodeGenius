@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { API_SERVER } from "../services/api";
 import "./login.css";
 
 /*
@@ -26,7 +27,7 @@ export default function Login({ setPage, setIsLoggedIn, setUserRole }) {
 
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:4000/api/auth/login", {
+      const response = await fetch(`${API_SERVER}/api/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -179,7 +180,7 @@ export default function Login({ setPage, setIsLoggedIn, setUserRole }) {
             className="social-btn social-google"
             title="Sign in with Google"
             onClick={() => {
-              window.location.href = "http://localhost:4000/api/oauth/google";
+              window.location.href = `${API_SERVER}/api/oauth/google`;
             }}
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="22" height="22">
@@ -196,7 +197,7 @@ export default function Login({ setPage, setIsLoggedIn, setUserRole }) {
             className="social-btn social-github"
             title="Sign in with GitHub"
             onClick={() => {
-              window.location.href = "http://localhost:4000/api/oauth/github";
+              window.location.href = `${API_SERVER}/api/oauth/github`;
             }}
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
