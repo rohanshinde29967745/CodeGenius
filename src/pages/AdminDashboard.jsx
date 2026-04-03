@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { getAdminStats, getAdminActivity, getPopularProblems } from "../services/api";
+import { getAdminStats, getAdminActivity, getPopularProblems, API_BASE } from "../services/api";
 import "../App.css";
 
 function AdminDashboard({ setPage }) {
@@ -24,7 +24,7 @@ function AdminDashboard({ setPage }) {
           getAdminStats(),
           getAdminActivity(5),
           getPopularProblems(3),
-          fetch("http://localhost:4000/api/reports/pending/count").catch(() => null),
+          fetch(`${API_BASE}/reports/pending/count`).catch(() => null),
         ]);
         setStats(statsData);
         setActivities(activityData.activities || []);
@@ -46,7 +46,7 @@ function AdminDashboard({ setPage }) {
   const handleExportData = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:4000/api/admin/export", {
+      const response = await fetch(`${API_BASE}/admin/export`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await response.json();

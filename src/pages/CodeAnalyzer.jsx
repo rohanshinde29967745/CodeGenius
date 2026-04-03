@@ -7,7 +7,7 @@ import "prismjs/components/prism-c";
 import "prismjs/components/prism-cpp";
 import "../App.css";
 import "./CodeAnalyzer.css";
-import { getCurrentUser } from "../services/api";
+import { getCurrentUser, API_BASE } from "../services/api";
 
 export default function CodeAnalyzer() {
   const [language, setLanguage] = useState("JavaScript");
@@ -111,7 +111,7 @@ export default function CodeAnalyzer() {
     
     setLoading(true); setError(""); setAnalysisResult(null); setConsoleTab('console');
     try {
-      const res = await fetch("http://localhost:4000/api/analyze", { 
+      const res = await fetch(`${API_BASE}/analyze`, { 
         method: "POST", 
         headers: { "Content-Type": "application/json" }, 
         body: JSON.stringify({ inputCode: currentCode, language, userId: getCurrentUser()?.id }) 

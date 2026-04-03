@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { API_SERVER } from "../services/api";
+import { API_BASE } from "../services/api";
 import "../App.css";
 
 function AdminReports() {
@@ -10,8 +10,8 @@ function AdminReports() {
     const fetchReports = useCallback(async () => {
         try {
             const url = filter === "all"
-                ? `${API_SERVER}/api/reports`
-                : `${API_SERVER}/api/reports?status=${filter}`;
+                ? `${API_BASE}/reports`
+                : `${API_BASE}/reports?status=${filter}`;
             const response = await fetch(url);
             const data = await response.json();
             setReports(data.reports || []);
@@ -29,7 +29,7 @@ function AdminReports() {
     const updateStatus = async (reportId, newStatus) => {
         try {
             const currentUser = JSON.parse(localStorage.getItem('user'));
-            await fetch(`${API_SERVER}/api/reports/${reportId}`, {
+            await fetch(`${API_BASE}/reports/${reportId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status: newStatus, resolvedBy: currentUser?.id }),
@@ -43,7 +43,7 @@ function AdminReports() {
     const deleteReport = async (reportId) => {
         if (!window.confirm("Delete this report?")) return;
         try {
-            await fetch(`${API_SERVER}/api/reports/${reportId}`, { method: 'DELETE' });
+            await fetch(`${API_BASE}/reports/${reportId}`, { method: 'DELETE' });
             fetchReports();
         } catch (error) {
             console.error("Failed to delete:", error);

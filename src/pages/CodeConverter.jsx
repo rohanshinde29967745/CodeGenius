@@ -7,7 +7,7 @@ import "prismjs/components/prism-c";
 import "prismjs/components/prism-cpp";
 import "../App.css";
 import "./CodeConverter.css";
-import { getCurrentUser } from "../services/api";
+import { getCurrentUser, API_BASE } from "../services/api";
 import { copyWithToast, checkLanguageMismatch } from "../utils/codeUtils";
 
 export default function CodeConverter() {
@@ -111,7 +111,7 @@ export default function CodeConverter() {
     
     // Simulate slight delay for rich UI effect, then backend call
     try {
-      const response = await fetch("http://localhost:4000/api/convert", {
+      const response = await fetch(`${API_BASE}/convert`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
