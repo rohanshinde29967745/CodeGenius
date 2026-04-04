@@ -696,7 +696,7 @@ public:
       if (data.feedback) {
         setAiFeedback({
           result: backendResult,
-          score: data.feedback.score || 100,
+          score: data.feedback.score !== undefined ? data.feedback.score : 100,
           suggestions: data.feedback.suggestions || [],
           correctSolution: data.feedback.optimizedSolution || "",
           errorExplanation: data.feedback.errorExplanation || "",

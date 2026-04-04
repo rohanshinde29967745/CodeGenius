@@ -153,7 +153,7 @@ ${inputCode}
             inputCode,
             language,
             JSON.stringify(out.explanation),
-            JSON.stringify(out.errors),
+            out.errors.map(e => typeof e === 'string' ? e : JSON.stringify(e)),
             out.complexity, // Ensure db column is JSONB
             out.flowchart,
             out.optimized

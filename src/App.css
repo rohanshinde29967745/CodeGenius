@@ -5049,6 +5049,7 @@ body.dark-theme .ps-editor::placeholder {
   font-weight: 800;
   background: linear-gradient(135deg, #1a1f36 0%, #4a5568 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
   letter-spacing: -0.5px;
 }
@@ -5112,6 +5113,7 @@ body.dark-theme .ps-editor::placeholder {
   margin: 12px 0 6px;
   background: linear-gradient(135deg, #667eea, #764ba2);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
@@ -27894,10 +27896,7 @@ html {
   left: 100%;
 }
 
-/* Stat values - static (no floating) */
-.db-stat-value {
-  /* No animation - static display */
-}
+/* Stat values - empty rule removed */
 
 /* ===================== ENHANCED PANELS ===================== */
 
@@ -35368,7 +35367,7 @@ body.dark-theme .adm-contest-btn.secondary:hover {
   background: rgba(110, 142, 251, 0.15);
 }
 /* =====================================================================
-   CONTEST SYSTEM — PREMIUM UI
+   CONTEST SYSTEM ï¿½ PREMIUM UI
    ===================================================================== */
 
 /* ---- CONTEST LIST PAGE ---- */
